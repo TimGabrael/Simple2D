@@ -28,3 +28,10 @@ void GameManager::OnMouseButton(int button, int action, int mods)
 void GameManager::OnMousePositionChanged(float x, float y, float dx, float dy)
 {
 }
+
+GameManager* GM_CreateGameManager(GameState* state)
+{
+	GameManager* out = new GameManager;
+
+	return out;
+}

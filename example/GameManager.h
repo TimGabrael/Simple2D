@@ -13,6 +13,8 @@ struct GameManager : public BaseGameManager
 	virtual void OnMouseButton(int button, int action, int mods) override;
 	virtual void OnMousePositionChanged(float x, float y, float dx, float dy) override;
 
-	AtlasTexture* atlas;
-	FontMetrics* metrics;
+	AtlasTexture* atlas = nullptr;
+	FontMetrics* metrics = nullptr;
 };
+
+GameManager* GM_CreateGameManager(GameState* state);

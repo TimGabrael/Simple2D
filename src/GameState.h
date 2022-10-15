@@ -41,3 +41,8 @@ struct GameState
 	bool isFullscreen;
 	bool isMouseCaptured;
 };
+
+GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight);
+GameState* GetGameState();
+void SetFullscreen(GameState* state, int monitorIdx, int* width, int* height);
+void SetWindowed(GameState* state, int width, int height);
