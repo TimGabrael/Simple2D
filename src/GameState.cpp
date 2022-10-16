@@ -1,5 +1,7 @@
 #include "GameState.h"
-
+#include "Graphics/Scene.h"
+#include "Graphics/Renderer.h"
+#include "Physics/Physics.h"
 
 static GameState* g_gameState = nullptr;
 
@@ -159,9 +161,9 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	style.Colors[ImGuiCol_WindowBg].w = 0.4f;
 
 
-	// g_gameState->physics = PH_CreatePhysicsScene();
-	// g_gameState->scene = SC_CreateScene();
-	// g_gameState->renderer = RE_CreateRenderer(g_gameState->assets);
+	g_gameState->physics = PH_CreatePhysicsScene(-9.81f);
+	g_gameState->scene = SC_CreateScene();
+	g_gameState->renderer = RE_CreateRenderer();
 
 	if (g_gameState->isFullscreen)
 	{
@@ -222,4 +224,52 @@ void SetWindowed(GameState* state, int width, int height)
 	g_gameState->isFullscreen = false;
 	g_gameState->accumulatedTime = 0.0f;
 	glfwSetWindowMonitor(state->window, nullptr, 0, 32, width, height, 0);
+}
+
+
+void UpateGameState()
+{
+	static constexpr float TIME_STEP = 1.0f / 60.0f;
+	while (true)
+	{
+		glfwPollEvents();
+		if (glfwWindowShouldClose(g_gameState->window)) break;
+
+
+		static double timer = glfwGetTime();
+		double curTime = glfwGetTime();
+
+		float dt = curTime - timer;
+		timer = curTime;
+		g_gameState->accumulatedTime += dt;
+
+		while (g_gameState->accumulatedTime >= TIME_STEP)
+		{
+			g_gameState->manager->PreUpdate(TIME_STEP);
+			SC_Update(g_gameState->scene, TIME_STEP);
+			g_gameState->manager->Update(TIME_STEP);
+			PH_Update(g_gameState->physics, TIME_STEP);
+			g_gameState->manager->PostUpdate(TIME_STEP);
+			g_gameState->accumulatedTime -= TIME_STEP;
+			break;
+		}
+
+		if (g_gameState->winWidth > 0 && g_gameState->winHeight > 0)
+		{
+			//SC_PrepareRender(g_gameState->scene);
+
+
+			glEnable(GL_DEPTH_TEST);
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_BACK);
+			glFrontFace(GL_CCW);
+			glDepthMask(GL_TRUE);
+			
+
+			g_gameState->manager->RenderCallback(g_gameState);
+
+			glfwSwapBuffers(g_gameState->window);
+		}
+
+	}
 }

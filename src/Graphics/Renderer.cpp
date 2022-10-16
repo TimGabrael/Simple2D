@@ -2,6 +2,8 @@
 #include "../Util/Math.h"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
+#include "Renderables.h"
+#include <algorithm>
 
 static const char* quadFilterVertexShader = "#version 330\n\
 out vec2 UV;\n\
@@ -106,9 +108,34 @@ uniform float mipLevel2;\
 out vec4 outCol;\
 void main()\
 {\
-    vec4 c = tonemap(textureLod(tex1, UV, mipLevel1) + textureLod(tex2, UV, mipLevel2));\n\
+    vec4 c = textureLod(tex1, UV, mipLevel1) + textureLod(tex2, UV, mipLevel2);\n\
     outCol = c;\
 }";
+
+
+static const char* stdVertexShader = "#version 330\n\
+in vec2 pos;\
+in vec2 uv;\
+in vec4 baseColor;\
+uniform mat4 viewProj;\
+out vec2 fragUV;\
+out vec4 fragCol;\
+void main()\
+{\
+	fragUV = uv;\
+	fragCol = baseColor;\
+	gl_Position = vec4(pos, 0.0f, 1.0f);\
+}";
+static const char* stdFragmentShader = "#version 330\n\
+in vec2 fragUV;\
+in vec4 fragCol;\
+out vec4 outCol;\
+uniform sampler2D baseTexture;\
+void main()\
+{\
+	outCol = texture(baseTexture, fragUV) * fragCol;\
+}";
+
 
 
 static GLuint CreateProgram(const char* vtxShader, const char* frgShader)
@@ -257,14 +284,26 @@ static void CleanUpPostProcessingRenderInfo(PostProcessingRenderInfo* info)
 }
 
 
-
+struct BaseRenderInfo
+{
+	GLuint program;
+	GLuint viewProjLoc;
+};
 
 struct Renderer
 {
+	BaseRenderInfo info;
 	PostProcessingRenderInfo ppInfo;
 
 	GLuint whiteTexture;
 	GLuint blackTexture;
+
+	GLuint vao;
+	GLuint vertexBuffer;
+	GLuint indexBuffer;
+
+	std::vector<Vertex2D> vertexList;
+	std::vector<uint32_t> indList;
 
 };
 
@@ -272,6 +311,29 @@ struct Renderer* RE_CreateRenderer()
 {
 	Renderer* out = new Renderer;
 	memset(out, 0, sizeof(Renderer));
+
+
+	out->info.program = CreateProgram(stdVertexShader, stdFragmentShader);
+	out->info.viewProjLoc = glGetUniformLocation(out->info.program, "viewProj");
+	{
+		glGenVertexArrays(1, &out->vao);
+		glBindVertexArray(out->vao);
+		glGenBuffers(1, &out->vertexBuffer);
+		glGenBuffers(1, &out->indexBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, out->vertexBuffer);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out->indexBuffer);
+
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), nullptr);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), (void*)offsetof(Vertex2D, uv));
+		glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), (void*)offsetof(Vertex2D, col));
+
+		glEnableVertexArrayAttrib(out->vao, 0);
+		glEnableVertexArrayAttrib(out->vao, 1);
+		glEnableVertexArrayAttrib(out->vao, 2);
+
+
+
+	}
 	LoadPostProcessingRenderInfo(&out->ppInfo);
 	{
 		uint32_t col = 0xFFFFFFFF;
@@ -426,6 +488,44 @@ void RE_CleanUpPostProcessingRenderData(PostProcessingRenderData* data)
 }
 
 
+
+
+void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, SceneObject** objs, uint32_t numObjs)
+{
+	std::sort(objs, objs + numObjs, [](SceneObject* o1, SceneObject* o2) {
+		if (o1->flags & OBJECT_FLAG_VISIBLE && o1->renderable && o2->renderable) {
+			return o1->renderable->layer < o2->renderable->layer;
+		}
+		else
+		{
+			return (o2->flags & OBJECT_FLAG_VISIBLE && o2->renderable);
+		}
+	});
+	for (uint32_t i = 0; i < numObjs; i++)
+	{
+		if (!(objs[i]->flags & OBJECT_FLAG_VISIBLE) || !objs[i]->renderable) break;
+		if (objs[i]->body) objs[i]->renderable->UpdateFromBody(objs[i]->body);
+		objs[i]->renderable->AddVertices(renderer->vertexList, renderer->indList);
+	}
+
+	glBindVertexArray(renderer->vao);
+	glBindBuffer(GL_ARRAY_BUFFER, renderer->vertexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->indexBuffer);
+
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * renderer->vertexList.size(), renderer->vertexList.data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * renderer->indList.size(), renderer->indList.data(), GL_DYNAMIC_DRAW);
+
+	glUseProgram(renderer->info.program);
+	glUniformMatrix4fv(renderer->info.viewProjLoc, 1, GL_FALSE, (GLfloat*)&viewProj);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, renderer->whiteTexture);
+
+	glDrawElements(GL_TRIANGLES, renderer->indList.size(), GL_UNSIGNED_INT, nullptr);
+
+	renderer->indList.clear();
+	renderer->vertexList.clear();
+}
 
 
 void RE_RenderPostProcessingBloom(struct Renderer* renderer, const PostProcessingRenderData* ppData, GLuint srcTexture, uint32_t srcWidth, uint32_t srcHeight, GLuint targetFBO, uint32_t targetWidth, uint32_t targetHeight)

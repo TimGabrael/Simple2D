@@ -12,7 +12,6 @@ struct Scene
 {
 	SceneObjectList objects;
 	uint32_t numObjects;
-	PhysicsScene* physics;
 	SceneObject** cachedList;
 	uint32_t cachedListCapacity;
 	bool needRebuild;
@@ -126,11 +125,10 @@ static void FreeEntireList(SceneObjectList* list)
 
 
 
-struct Scene* SC_CreateScene(struct PhysicsScene* ph)
+struct Scene* SC_CreateScene()
 {
 	Scene* scene = new Scene;
 	memset(scene, 0, sizeof(Scene));
-	scene->physics = ph;
 	scene->needRebuild = true;
 	return scene;
 }
@@ -158,6 +156,7 @@ SceneObject* SC_AddObject(struct Scene* scene, const SceneObject* obj)
 	SceneObject* out = AllocateObjectFromList(&scene->objects);
 	scene->numObjects = scene->numObjects + 1;
 	memcpy(out, obj, sizeof(SceneObject));
+	out->flags = OBJECT_FLAG_VISIBLE;
 	return out;
 }
 void SC_RemoveObject(struct Scene* scene, SceneObject* obj)

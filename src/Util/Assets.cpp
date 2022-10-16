@@ -466,3 +466,41 @@ struct AtlasTexture* AM_LoadTextureAtlas(const char* file, FontMetrics** metrics
 	delete[] fullData;
 	return out;
 }
+
+
+
+Texture AM_LoadTexture(const char* file, bool linear)
+{
+	Texture res;
+	memset(&res, 0, sizeof(Texture));
+	int x, y, comp;
+	stbi_uc* fileData = stbi_load(file, &x, &y, &comp, 4);
+	if (fileData)
+	{
+		res.width = x;
+		res.height = y;
+		res.type = GL_TEXTURE_2D;
+		glGenTextures(1, &res.uniform);
+		glBindTexture(GL_TEXTURE_2D, res.uniform);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, fileData);
+		if (linear)
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		}
+		else
+		{
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		}
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		stbi_image_free(fileData);
+	}
+
+	return res;
+}
+void AM_CleanUpTexture(Texture* texture)
+{
+
+}

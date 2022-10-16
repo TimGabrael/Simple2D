@@ -55,3 +55,6 @@ bool AM_AtlasAddSubRawData(struct AtlasBuildData* data, uint32_t* rawData, uint3
 void AM_StoreTextureAtlas(const char* file, struct AtlasBuildData* data, FontMetrics** metrics, uint32_t numFontMetrics);
 AtlasTexture* AM_EndTextureAtlas(struct AtlasBuildData* data, bool linear);
 AtlasTexture* AM_LoadTextureAtlas(const char* file, FontMetrics** metrics, uint32_t* numFontMetrics, bool linear);
+
+Texture AM_LoadTexture(const char* file, bool linear);
+void AM_CleanUpTexture(Texture* texture);

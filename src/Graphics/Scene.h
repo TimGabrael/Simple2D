@@ -7,14 +7,21 @@ struct Entity
 	virtual void Update(float dt) = 0;
 };
 
+enum OBJECT_FLAGS
+{
+	OBJECT_FLAG_VISIBLE = 1,
+};
+
+
 struct SceneObject
 {
+	class b2Body* body;
+	struct Renderable* renderable;
 	struct Entity* entity;
-	glm::mat4 transform;
 	uint32_t flags;
 };
 
-struct Scene* SC_CreateScene(struct PhysicsScene* ph);
+struct Scene* SC_CreateScene();
 void SC_CleanUpScene(struct Scene* scene);
 
 void SC_RemoveAll(struct Scene* scene);

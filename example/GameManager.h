@@ -6,6 +6,7 @@ struct GameManager : public BaseGameManager
 	virtual void RenderCallback(GameState* state) override;
 	virtual void Update(float dt) override;
 
+	virtual void PostUpdate(float dt) override;
 
 	virtual void OnWindowPositionChanged(int x, int y) override;
 	virtual void OnWindowResize(int w, int h) override;
