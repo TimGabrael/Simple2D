@@ -27,5 +27,5 @@ PhysicsScene* PH_CreatePhysicsScene(float gravity)
 
 void PH_Update(PhysicsScene* physics, float dt)
 {
-	physics->world.Step(dt, 10, 10);
+	physics->world.Step(dt, 6, 2);
 }

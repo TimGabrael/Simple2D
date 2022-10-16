@@ -38,14 +38,18 @@ struct GameState
 	float mouseX;
 	float mouseY;
 	float accumulatedTime;
+	float aspectRatio;
 	bool hasFocus;
 	bool isFullscreen;
 	bool isMouseCaptured;
 };
 
-GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight);
+GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight, float gravity);
 GameState* GetGameState();
 void SetFullscreen(GameState* state, int monitorIdx, int* width, int* height);
 void SetWindowed(GameState* state, int width, int height);
+
+bool GetKey(int key);
+bool GetMouseButton(int button);
 
 void UpateGameState();

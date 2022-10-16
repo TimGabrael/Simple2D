@@ -17,7 +17,7 @@ set(ENGINE_INCLUDES 3rd-party/glfw/include 3rd-party/glm 3rd-party/NFDriver/incl
 
 
 
-add_executable(Example2D "example/main.cpp" ${ENGINE_FILES} "src/Graphics/Renderables.cpp")
+add_executable(Example2D "example/main.cpp" ${ENGINE_FILES} "src/Graphics/Renderables.cpp" "example/Entitys.h" "example/Entitys.cpp" "example/Debug.h" "example/Debug.cpp")
 
 set_target_properties(Example2D PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 

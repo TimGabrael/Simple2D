@@ -124,7 +124,7 @@ void main()\
 {\
 	fragUV = uv;\
 	fragCol = baseColor;\
-	gl_Position = vec4(pos, 0.0f, 1.0f);\
+	gl_Position = viewProj * vec4(pos, 0.0f, 1.0f);\
 }";
 static const char* stdFragmentShader = "#version 330\n\
 in vec2 fragUV;\
@@ -133,7 +133,9 @@ out vec4 outCol;\
 uniform sampler2D baseTexture;\
 void main()\
 {\
-	outCol = texture(baseTexture, fragUV) * fragCol;\
+	vec4 c = texture(baseTexture, fragUV) * fragCol;\
+	if(c.a == 0.0f) discard;\
+	outCol = c;\
 }";
 
 
@@ -289,6 +291,12 @@ struct BaseRenderInfo
 	GLuint program;
 	GLuint viewProjLoc;
 };
+struct DrawCommand
+{
+	uint32_t firstIndex;
+	uint32_t numInd;
+	GLuint texture;
+};
 
 struct Renderer
 {
@@ -304,6 +312,8 @@ struct Renderer
 
 	std::vector<Vertex2D> vertexList;
 	std::vector<uint32_t> indList;
+
+	std::vector<DrawCommand> commands;
 
 };
 
@@ -492,6 +502,7 @@ void RE_CleanUpPostProcessingRenderData(PostProcessingRenderData* data)
 
 void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, SceneObject** objs, uint32_t numObjs)
 {
+	if (numObjs == 0) return;
 	std::sort(objs, objs + numObjs, [](SceneObject* o1, SceneObject* o2) {
 		if (o1->flags & OBJECT_FLAG_VISIBLE && o1->renderable && o2->renderable) {
 			return o1->renderable->layer < o2->renderable->layer;
@@ -501,11 +512,35 @@ void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, SceneO
 			return (o2->flags & OBJECT_FLAG_VISIBLE && o2->renderable);
 		}
 	});
+
+	renderer->commands.push_back({ 0, 0, objs[0]->renderable->texture});
+	int curLayer = objs[0]->renderable->layer;
+	
 	for (uint32_t i = 0; i < numObjs; i++)
 	{
 		if (!(objs[i]->flags & OBJECT_FLAG_VISIBLE) || !objs[i]->renderable) break;
 		if (objs[i]->body) objs[i]->renderable->UpdateFromBody(objs[i]->body);
+
+		const uint32_t oldIndSize = renderer->indList.size();
+		if (objs[i]->renderable->layer != curLayer)
+		{
+			renderer->commands.push_back({ oldIndSize, 0, objs[i]->renderable->texture });
+		}
+		DrawCommand* cur = &renderer->commands.at(renderer->commands.size() - 1);
+		if (cur->texture != objs[i]->renderable->texture)
+		{
+			if (cur->texture == -1)
+			{
+				cur->texture = objs[i]->renderable->texture;
+			}
+			else
+			{
+				renderer->commands.push_back({ oldIndSize, (uint32_t)(renderer->indList.size() - oldIndSize), objs[i]->renderable->texture });
+				cur = &renderer->commands.at(renderer->commands.size() - 1);
+			}
+		}
 		objs[i]->renderable->AddVertices(renderer->vertexList, renderer->indList);
+		cur->numInd += renderer->indList.size() - oldIndSize;
 	}
 
 	glBindVertexArray(renderer->vao);
@@ -516,15 +551,25 @@ void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, SceneO
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * renderer->indList.size(), renderer->indList.data(), GL_DYNAMIC_DRAW);
 
 	glUseProgram(renderer->info.program);
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glUniformMatrix4fv(renderer->info.viewProjLoc, 1, GL_FALSE, (GLfloat*)&viewProj);
-
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, renderer->whiteTexture);
 
-	glDrawElements(GL_TRIANGLES, renderer->indList.size(), GL_UNSIGNED_INT, nullptr);
+	for (uint32_t i = 0; i < renderer->commands.size(); i++)
+	{
+		DrawCommand& cmd = renderer->commands.at(i);
+		if(cmd.texture) glBindTexture(GL_TEXTURE_2D, cmd.texture);
+		else glBindTexture(GL_TEXTURE_2D, renderer->whiteTexture);
 
+		glDrawElements(GL_TRIANGLES, cmd.numInd, GL_UNSIGNED_INT, (const void*)(cmd.firstIndex * sizeof(uint32_t)));
+	}
 	renderer->indList.clear();
 	renderer->vertexList.clear();
+	renderer->commands.clear();
 }
 
 

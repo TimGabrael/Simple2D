@@ -1,75 +1,51 @@
 #include "GameManager.h"
+#include <filesystem>
+#include <charconv>
+#include "Entitys.h"
 
 int main()
 {
-	GameState* game = CreateGameState("Example2D", 1600, 900);
+	GameState* game = CreateGameState("Example2D", 1600, 900, -10.0f);
 	GameManager* manager = GM_CreateGameManager(game);
 	game->manager = manager;
 
-
 	{
-		b2BodyDef body{};
-		body.type = b2_dynamicBody;
-		body.position = { 0.10f, 0.10f };
-		body.angle = 0.0f;
-		body.enabled = true;
-		body.allowSleep = true;
-		body.fixedRotation = false;
-		body.gravityScale = 1.0f;
-		b2Body* collBody = game->physics->world.CreateBody(&body);
+		AtlasBuildData* build = AM_BeginAtlasTexture();
+		std::filesystem::path path = "Assets/food";
+		std::vector<std::string> fileList;
+		for (const auto& entry : std::filesystem::recursive_directory_iterator(path))
+		{
+			if (entry.is_regular_file() && entry.path().extension() == ".png")
+			{
+				fileList.emplace_back(entry.path().string());
+			}
+		}
+		std::sort(fileList.begin(), fileList.end(), [](std::string& s1, std::string& s2) {
+			size_t n1 = s1.find('_', 0);
+			size_t n2 = s2.find('_', 0);
+			std::string_view v1(s1.c_str(), n1);
+			std::string_view v2(s2.c_str(), n2);
+			int i1 = 0;
+			int i2 = 0;
+			std::from_chars(s1.c_str() + 12, s1.c_str()+n1, i1);
+			std::from_chars(s2.c_str() + 12, s2.c_str()+n2, i2);
+			return i1 < i2;
 
-		b2PolygonShape shape;
-		shape.SetAsBox(0.1f, 0.1f);
-
-		b2FixtureDef fixture{};
-		fixture.density = 1.0f;
-		fixture.friction = 0.0f;
-		fixture.isSensor = false;
-		fixture.restitution = 0.1f;
-		fixture.restitutionThreshold = 2.0f;
-		fixture.shape = &shape;
-
-		collBody->CreateFixture(&fixture);
-
-		SceneObject obj;
-		obj.entity = nullptr;
-		obj.flags = 0;
-		obj.body = collBody;
-		obj.renderable = new TextureQuad({ 0.10f, 0.10f }, { 0.10f, 0.10f }, { 0.0f, 0.0f }, { 0.0f, 0.0f }, 0xFFFF00FF);
-		SC_AddObject(game->scene, &obj);
+		});
+		for (const auto& f : fileList)
+		{
+			AM_AtlasAddFromFile(build, f.c_str());
+		}
+		manager->atlas = AM_EndTextureAtlas(build, false);
 	}
+
 	{
-		b2BodyDef body{};
-		body.type = b2_staticBody;
-		body.position = { 0.0f, -0.80f };
-		body.angle = 0.1f;
-		body.enabled = true;
-		body.allowSleep = true;
-		body.fixedRotation = false;
-		body.gravityScale = 1.0f;
-		b2Body* collBody = game->physics->world.CreateBody(&body);
-
-		b2PolygonShape shape;
-		shape.SetAsBox(2.f, 0.05f);
-
-		b2FixtureDef fixture{};
-		fixture.density = 1.0f;
-		fixture.friction = 0.0f;
-		fixture.isSensor = false;
-		fixture.restitution = 0.1f;
-		fixture.restitutionThreshold = 2.0f;
-		fixture.shape = &shape;
-
-		collBody->CreateFixture(&fixture);
-
-		TextureQuad* quad = new TextureQuad({ 0.0f, -0.80f }, { 2.f, 0.05f }, { 0.0f, 0.0f }, { 0.0f, 0.0f }, 0xFFFF0000);
-		quad->angle = 0.1f;
-		SceneObject obj;
-		obj.entity = nullptr;
-		obj.flags = 0;
-		obj.body = collBody;
-		obj.renderable = quad;
-		SC_AddObject(game->scene, &obj);
+		SceneObject* base = CreateBaseObject(game->scene);
+		SceneObject* ball = CreateBallObject(game->scene, {0.0f, 1.5f}, 0.05f);
+		for (uint32_t i = 0; i < 30; i++)
+		{
+			SceneObject* peg = CreatePegObject(game->scene, { GetRandomFloat(-1.5f, 1.5f), GetRandomFloat(-1.5f, 1.5f) }, 0.05f);
+		}
 	}
 
 

@@ -1,4 +1,5 @@
 #include "Scene.h"
+#include "GameState.h"
 #define NUM_OBJECTS_IN_LIST sizeof(uintptr_t) * 8
 
 struct SceneObjectList
@@ -19,7 +20,13 @@ struct Scene
 
 static void FreeObject(SceneObject* obj)
 {
+	GameState* game = GetGameState();
 	if (obj->entity) delete obj->entity;
+	if (obj->body) game->physics->world.DestroyBody(obj->body);
+	if (obj->renderable) delete obj->renderable;
+	obj->entity = nullptr;
+	obj->body = nullptr;
+	obj->renderable = nullptr;
 }
 
 

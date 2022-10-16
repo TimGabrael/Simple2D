@@ -23,6 +23,7 @@ static void WindowResizeCallback(GLFWwindow* window, int w, int h)
 		g_gameState->accumulatedTime = 0.0f;
 		g_gameState->winWidth = w;
 		g_gameState->winHeight = h;
+		g_gameState->aspectRatio = (float)w / (float)h;
 		if (g_gameState->manager) g_gameState->manager->OnWindowResize(w, h);
 
 	}
@@ -99,7 +100,7 @@ static void JoystickCallback(int jid, int event)
 	}
 }
 
-GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight)
+GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight, float gravity)
 {
 	if (g_gameState) return g_gameState;
 
@@ -161,9 +162,11 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	style.Colors[ImGuiCol_WindowBg].w = 0.4f;
 
 
-	g_gameState->physics = PH_CreatePhysicsScene(-9.81f);
+	g_gameState->physics = PH_CreatePhysicsScene(gravity);
 	g_gameState->scene = SC_CreateScene();
 	g_gameState->renderer = RE_CreateRenderer();
+
+	g_gameState->aspectRatio = (float)windowWidth / (float)windowHeight;
 
 	if (g_gameState->isFullscreen)
 	{
@@ -226,6 +229,16 @@ void SetWindowed(GameState* state, int width, int height)
 	glfwSetWindowMonitor(state->window, nullptr, 0, 32, width, height, 0);
 }
 
+bool GetKey(int key)
+{
+	if (ImGui::GetIO().WantCaptureKeyboard) return false;
+	return glfwGetKey(g_gameState->window, key);
+}
+bool GetMouseButton(int button)
+{
+	if (ImGui::GetIO().WantCaptureMouse) return false;
+	return glfwGetMouseButton(g_gameState->window, button);
+}
 
 void UpateGameState()
 {
@@ -251,20 +264,17 @@ void UpateGameState()
 			PH_Update(g_gameState->physics, TIME_STEP);
 			g_gameState->manager->PostUpdate(TIME_STEP);
 			g_gameState->accumulatedTime -= TIME_STEP;
-			break;
 		}
 
 		if (g_gameState->winWidth > 0 && g_gameState->winHeight > 0)
 		{
-			//SC_PrepareRender(g_gameState->scene);
-
 
 			glEnable(GL_DEPTH_TEST);
 			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);
 			glFrontFace(GL_CCW);
 			glDepthMask(GL_TRUE);
-			
+
 
 			g_gameState->manager->RenderCallback(g_gameState);
 
