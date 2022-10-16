@@ -242,7 +242,6 @@ bool GetMouseButton(int button)
 
 void UpateGameState()
 {
-	static constexpr float TIME_STEP = 1.0f / 60.0f;
 	while (true)
 	{
 		glfwPollEvents();
@@ -258,11 +257,7 @@ void UpateGameState()
 
 		while (g_gameState->accumulatedTime >= TIME_STEP)
 		{
-			g_gameState->manager->PreUpdate(TIME_STEP);
-			SC_Update(g_gameState->scene, TIME_STEP);
-			g_gameState->manager->Update(TIME_STEP);
-			PH_Update(g_gameState->physics, TIME_STEP);
-			g_gameState->manager->PostUpdate(TIME_STEP);
+			UpdateGameStep();
 			g_gameState->accumulatedTime -= TIME_STEP;
 		}
 
@@ -282,4 +277,14 @@ void UpateGameState()
 		}
 
 	}
+}
+
+
+void UpdateGameStep()
+{
+	g_gameState->manager->PreUpdate(TIME_STEP);
+	SC_Update(g_gameState->scene, TIME_STEP);
+	g_gameState->manager->Update(TIME_STEP);
+	PH_Update(g_gameState->physics, TIME_STEP);
+	g_gameState->manager->PostUpdate(TIME_STEP);
 }

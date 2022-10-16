@@ -146,6 +146,44 @@ void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::ve
 }
 
 
+
+std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& velocity, float size, float simulateDuration)
+{
+	GameState* state = GetGameState();
+	GameManager* m = (GameManager*)state->manager;
+	if (m->ballList.size() > 0) return {};
+
+	std::vector<glm::vec2> accumulated = {pos};
+
+	SceneObject* obj = CreateBallObject(state->scene, pos, velocity, size);
+	while (simulateDuration >= TIME_STEP)
+	{
+		UpdateGameStep();
+		if (m->ballList.size() == 0) 
+		{
+			break;
+		}
+		else
+		{
+			auto p = m->ballList.at(0)->body->GetPosition();
+			accumulated.push_back({ p.x, p.y });
+		}
+		simulateDuration -= TIME_STEP;
+	}
+	if (m->ballList.size() > 0)
+	{
+		auto p = m->ballList.at(0)->body->GetPosition();
+		accumulated.push_back({ p.x, p.y });
+		for (uint32_t i = 0; i < m->ballList.size(); i++)
+		{
+			SC_RemoveObject(state->scene, m->ballList.at(i));
+		}
+		m->ballList.clear();
+	}
+	return accumulated;
+}
+
+
 SceneObject* CreateBaseObject(Scene* scene)
 {
 	GameState* game = GetGameState();
@@ -208,8 +246,7 @@ SceneObject* CreateBaseObject(Scene* scene)
 	return res;
 }
 
-
-SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, float size)
+SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec2& velocity, float size)
 {
 	GameState* game = GetGameState();
 	b2BodyDef body{};
@@ -217,14 +254,15 @@ SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, float size)
 	body.position = { pos.x, pos.y };
 	body.angle = 0.0f;
 	body.enabled = true;
-	body.allowSleep = true;
+	body.allowSleep = false;
 	body.fixedRotation = false;
 	body.gravityScale = 1.0f;
 	b2Body* collBody = game->physics->world.CreateBody(&body);
 
 	b2CircleShape shape;
 	shape.m_radius = size;
-
+	
+	
 	b2FixtureDef fixture{};
 	fixture.density = 1.0f;
 	fixture.friction = 0.1f;
@@ -232,13 +270,14 @@ SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, float size)
 	fixture.restitution = 0.5f;
 	fixture.restitutionThreshold = 2.0f;
 	fixture.shape = &shape;
+	fixture.filter.maskBits = 1;
+	fixture.filter.categoryBits = 2;
 
 	collBody->CreateFixture(&fixture);
 
 	GameManager* m = (GameManager*)game->manager;
 
 	const AtlasTexture::UVBound& bound = m->atlas->bounds[SPRITES::DISH_2];
-
 
 	SceneObject obj;
 	obj.entity = new Ball(pos);
@@ -248,6 +287,9 @@ SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, float size)
 	obj.renderable->layer = 1;
 	SceneObject* res = SC_AddObject(scene, &obj);
 	collBody->GetUserData().pointer = (uintptr_t)res;
+
+	res->body->SetLinearVelocity({ velocity.x, velocity.y });
+	collBody->SetAwake(true);
 
 	GM_GetGameManager()->ballList.push_back(res);
 	return res;

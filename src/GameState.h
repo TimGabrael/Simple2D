@@ -6,6 +6,8 @@
 #include "imgui_impl_opengl3.h"
 #include "Physics/Physics.h"
 
+#define TIME_STEP 1.0f / 60.0f
+
 struct BaseGameManager
 {
 	virtual void RenderCallback(struct GameState* state) = 0;
@@ -49,7 +51,10 @@ GameState* GetGameState();
 void SetFullscreen(GameState* state, int monitorIdx, int* width, int* height);
 void SetWindowed(GameState* state, int width, int height);
 
+
 bool GetKey(int key);
 bool GetMouseButton(int button);
 
 void UpateGameState();
+
+void UpdateGameStep();

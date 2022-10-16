@@ -57,6 +57,8 @@ struct Peg : public PeggleEntity
 };
 
 
+std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& velocity, float size, float simulateDuration);
+
 SceneObject* CreateBaseObject(Scene* scene);
-SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, float size);
+SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec2& velocity, float size);
 SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size);

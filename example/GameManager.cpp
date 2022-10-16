@@ -31,10 +31,23 @@ void GameManager::RenderCallback(GameState* state)
 
 	ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_::ImGuiDockNodeFlags_PassthruCentralNode);
 
-	ImGui::ShowDemoWindow(nullptr);
+	//ImGui::ShowDemoWindow(nullptr);
 
 	//ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
 
+	std::vector<glm::vec2> list = SimulateBall({ 0.0f, 1.5f }, { 0.0f, -1.0f }, 0.05f, 5.0f);
+	if (list.size() > 0)
+	{
+		ImVec2* imList = new ImVec2[list.size()];
+		for (uint32_t i = 0; i < list.size(); i++)
+		{
+			imList[i].x = (list.at(i).x - vpStart.x) / (vpEnd.x - vpStart.x) * state->winWidth;
+			imList[i].y = (list.at(i).y - vpEnd.y) / (vpStart.y - vpEnd.y) * state->winHeight;
+
+		}
+		ImGui::GetForegroundDrawList()->AddPolyline(imList, list.size(), 0xFFFFFFFF, 0, 2.0f);
+		delete[] imList;
+	}
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
@@ -116,8 +129,7 @@ void GameManager::OnMouseButton(int button, int action, int mods)
 	{
 		if (button == GLFW_MOUSE_BUTTON_LEFT)
 		{
-			CreateBallObject(game->scene, { 0.0f, 1.5f }, 0.05f);
-			LOG("NUM BALLS: %d\n", ((GameManager*)game->manager)->ballList.size());
+			SceneObject* obj = CreateBallObject(game->scene, { 0.0f, 1.5f }, {0.0f, -1.0f}, 0.05f);
 		}
 	}
 }
