@@ -125,8 +125,12 @@ struct GameManager : public BaseGameManager
 	virtual void OnMousePositionChanged(float x, float y, float dx, float dy) override;
 
 	std::vector<SceneObject*> ballList;
+	std::vector<SceneObject*> pegList;
+	SceneObject* background;
 	glm::vec2 vpStart;
 	glm::vec2 vpEnd;
+	glm::vec2 targetDir;
+	float startVelocity;
 	glm::mat4 viewProj;
 	AtlasTexture* atlas = nullptr;
 	FontMetrics* metrics = nullptr;
@@ -138,3 +142,5 @@ GameManager* GM_GetGameManager();
 
 
 float GetRandomFloat(float start, float end);
+
+void FillScene();

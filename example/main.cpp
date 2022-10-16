@@ -39,14 +39,9 @@ int main()
 		manager->atlas = AM_EndTextureAtlas(build, false);
 	}
 
-	{
-		SceneObject* base = CreateBaseObject(game->scene);
-		SceneObject* ball = CreateBallObject(game->scene, {0.0f, 1.5f}, {0.0f, -1.0f }, 0.05f);
-		for (uint32_t i = 0; i < 30; i++)
-		{
-			SceneObject* peg = CreatePegObject(game->scene, { GetRandomFloat(-1.5f, 1.5f), GetRandomFloat(-1.5f, 1.5f) }, 0.05f);
-		}
-	}
+	
+	FillScene();
+	
 
 
 

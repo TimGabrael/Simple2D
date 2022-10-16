@@ -27,10 +27,12 @@ struct Base : public PeggleEntity
 	virtual ENTITY_TYPE GetType() const override;
 	virtual void OnCollideWithBall(struct SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal) override;
 
+
+
 	b2Body* left;
 	b2Body* right;
 	b2Body* top;
-
+	glm::vec2 startPos;
 };
 
 struct Ball : public PeggleEntity
@@ -62,3 +64,11 @@ std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& veloc
 SceneObject* CreateBaseObject(Scene* scene);
 SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec2& velocity, float size);
 SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size);
+
+void RemoveBaseObject(SceneObject* obj);
+void RemoveBallObject(size_t idx);
+void RemovePegObject(size_t idx);
+
+void RemoveAllBalls();
+void RemoveAllPegs();
+void RemoveAllObjects();

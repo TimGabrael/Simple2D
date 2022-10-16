@@ -15,19 +15,6 @@ struct BaseRenderable : public Renderable
 		GameManager* m = GM_GetGameManager();
 
 
-		//verts.push_back({ {m->vpStart.x, m->vpStart.y }, {0.0f, 1.0f}, 0xFFFFFFFF });
-		//verts.push_back({ {m->vpEnd.x, m->vpStart.y }, {1.0f, 1.0f}, 0xFFFFFFFF });
-		//verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, 0xFFFFFFFF });
-		//verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, 0xFFFFFFFF });
-		//
-		//inds.push_back(cur);
-		//inds.push_back(cur + 1);
-		//inds.push_back(cur + 2);
-		//inds.push_back(cur + 2);
-		//inds.push_back(cur + 3);
-		//inds.push_back(cur);
-
-
 		verts.push_back({ {m->vpStart.x, m->vpStart.y }, {0.0f, 1.0f}, 0x60FFFFFF });
 		verts.push_back({ {-1.5f, m->vpStart.y }, {1.0f, 1.0f}, 0x60FFFFFF });
 		verts.push_back({ {-1.5f, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
@@ -75,6 +62,7 @@ struct BaseRenderable : public Renderable
 
 Base::Base()
 {
+	startPos = glm::vec2(0.0f, 1.3f);
 }
 Base::~Base()
 {
@@ -143,6 +131,22 @@ ENTITY_TYPE Peg::GetType() const
 void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal)
 {
 	ball->body->ApplyForceToCenter({ normal.x * 0.1f, normal.y * 0.1f }, true);
+	if (ball->renderable)
+	{
+		GameManager* m = GM_GetGameManager();
+		for (uint32_t i = 0; i < m->pegList.size(); i++)
+		{
+			if (this == m->pegList.at(i)->entity)
+			{
+				RemovePegObject(i);
+				break;
+			}
+		}
+	}
+	else
+	{
+		obj->body->SetEnabled(false);
+	}
 }
 
 
@@ -156,6 +160,11 @@ std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& veloc
 	std::vector<glm::vec2> accumulated = {pos};
 
 	SceneObject* obj = CreateBallObject(state->scene, pos, velocity, size);
+	if (obj->renderable)
+	{
+		delete obj->renderable;
+		obj->renderable = nullptr;
+	}
 	while (simulateDuration >= TIME_STEP)
 	{
 		UpdateGameStep();
@@ -181,6 +190,12 @@ std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& veloc
 		}
 		m->ballList.clear();
 	}
+
+	for (uint32_t i = 0; i < m->pegList.size(); i++)
+	{
+		m->pegList.at(i)->body->SetEnabled(true);
+	}
+
 	return accumulated;
 }
 
@@ -231,8 +246,6 @@ SceneObject* CreateBaseObject(Scene* scene)
 		
 	}
 
-
-
 	SceneObject obj;
 	obj.entity = base;
 	obj.body = nullptr;
@@ -240,9 +253,13 @@ SceneObject* CreateBaseObject(Scene* scene)
 	obj.flags = 0;
 	SceneObject* res = SC_AddObject(scene, &obj);
 
+	base->obj = res;
+
 	base->left->GetUserData().pointer = (uintptr_t)res;
 	base->right->GetUserData().pointer = (uintptr_t)res;
 	base->top->GetUserData().pointer = (uintptr_t)res;
+
+	GM_GetGameManager()->background = res;
 
 	return res;
 }
@@ -291,6 +308,8 @@ SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec
 
 	res->body->SetLinearVelocity({ velocity.x, velocity.y });
 	collBody->SetAwake(true);
+	
+	((PeggleEntity*)res->entity)->obj = res;
 
 	GM_GetGameManager()->ballList.push_back(res);
 	return res;
@@ -335,6 +354,69 @@ SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size)
 	obj.renderable->layer = 1;
 	SceneObject* res = SC_AddObject(scene, &obj);
 	collBody->GetUserData().pointer = (uintptr_t)res;
+	((PeggleEntity*)res->entity)->obj = res;
+
+	m->pegList.push_back(res);
 
 	return res;
+}
+
+void RemoveBaseObject(SceneObject* obj)
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	if (m->background)
+	{
+		SC_RemoveObject(state->scene, m->background);
+		m->background = nullptr;
+	}
+}
+void RemoveBallObject(size_t idx)
+{
+	GameManager* m = GM_GetGameManager();
+	if (idx < m->ballList.size())
+	{
+		GameState* state = GetGameState();
+		SC_RemoveObject(state->scene, m->ballList.at(idx));
+		m->ballList.erase(m->ballList.begin() + idx);
+	}
+}
+void RemovePegObject(size_t idx)
+{
+	GameManager* m = GM_GetGameManager();
+	if (idx < m->pegList.size())
+	{
+		GameState* state = GetGameState();
+		SC_RemoveObject(state->scene, m->pegList.at(idx));
+		m->pegList.erase(m->pegList.begin() + idx);
+	}
+}
+void RemoveAllBalls()
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	for (uint32_t i = 0; i < m->ballList.size(); i++)
+	{
+		SC_RemoveObject(state->scene, m->ballList.at(i));
+	}
+	m->ballList.clear();
+}
+void RemoveAllPegs()
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	for (uint32_t i = 0; i < m->pegList.size(); i++)
+	{
+		SC_RemoveObject(state->scene, m->pegList.at(i));
+	}
+	m->pegList.clear();
+}
+void RemoveAllObjects()
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	SC_RemoveAll(state->scene);
+	m->pegList.clear();
+	m->ballList.clear();
+	m->background = nullptr;
 }
