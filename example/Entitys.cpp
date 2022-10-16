@@ -170,6 +170,7 @@ std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& veloc
 		}
 		simulateDuration -= TIME_STEP;
 	}
+
 	if (m->ballList.size() > 0)
 	{
 		auto p = m->ballList.at(0)->body->GetPosition();

@@ -35,7 +35,7 @@ void GameManager::RenderCallback(GameState* state)
 
 	//ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
 
-	std::vector<glm::vec2> list = SimulateBall({ 0.0f, 1.5f }, { 0.0f, -1.0f }, 0.05f, 5.0f);
+	std::vector<glm::vec2> list = SimulateBall({ 0.0f, 1.5f }, { 0.0f, -1.0f }, 0.05f, 50.0f);
 	if (list.size() > 0)
 	{
 		ImVec2* imList = new ImVec2[list.size()];
@@ -69,36 +69,39 @@ void GameManager::PostUpdate(float dt)
 	b2Contact* list = state->physics->world.GetContactList();
 	while (list)
 	{
-		b2Fixture* fixA = list->GetFixtureA();
-		b2Fixture* fixB = list->GetFixtureB();
-		b2Body* bA = fixA->GetBody();
-		b2Body* bB = fixB->GetBody();
-		if (bA && bB)
+		if (list->IsTouching())
 		{
-			SceneObject* uA = (SceneObject*)bA->GetUserData().pointer;
-			SceneObject* uB = (SceneObject*)bB->GetUserData().pointer;
-			if (uA && uB && uA->entity && uB->entity)
+			b2Fixture* fixA = list->GetFixtureA();
+			b2Fixture* fixB = list->GetFixtureB();
+			b2Body* bA = fixA->GetBody();
+			b2Body* bB = fixB->GetBody();
+			if (bA && bB)
 			{
-				PeggleEntity* eA = (PeggleEntity*)uA->entity;
-				PeggleEntity* eB = (PeggleEntity*)uB->entity;
-				
-				b2WorldManifold normal;
-				list->GetWorldManifold(&normal);
-				glm::vec2 n = { normal.normal.x, normal.normal.y };
-				if (eA->GetType() == ENTITY_TYPE::BALL && eB->GetType() == ENTITY_TYPE::BALL)
+				SceneObject* uA = (SceneObject*)bA->GetUserData().pointer;
+				SceneObject* uB = (SceneObject*)bB->GetUserData().pointer;
+				if (uA && uB && uA->entity && uB->entity)
 				{
-					eA->OnCollideWithBall(uB, fixA, n);
-					eB->OnCollideWithBall(uA, fixB, -n);
-				}
-				else if (eA->GetType() == ENTITY_TYPE::BALL && eB->GetType() != ENTITY_TYPE::BALL)
-				{
-					eB->OnCollideWithBall(uA, fixB, -n);
-				}
-				else if (eA->GetType() != ENTITY_TYPE::BALL && eB->GetType() == ENTITY_TYPE::BALL)
-				{
-					eA->OnCollideWithBall(uB, fixA, n);
-				}
+					PeggleEntity* eA = (PeggleEntity*)uA->entity;
+					PeggleEntity* eB = (PeggleEntity*)uB->entity;
 
+					b2WorldManifold normal;
+					list->GetWorldManifold(&normal);
+					glm::vec2 n = { normal.normal.x, normal.normal.y };
+					if (eA->GetType() == ENTITY_TYPE::BALL && eB->GetType() == ENTITY_TYPE::BALL)
+					{
+						eA->OnCollideWithBall(uB, fixA, n);
+						eB->OnCollideWithBall(uA, fixB, -n);
+					}
+					else if (eA->GetType() == ENTITY_TYPE::BALL && eB->GetType() != ENTITY_TYPE::BALL)
+					{
+						eB->OnCollideWithBall(uA, fixB, -n);
+					}
+					else if (eA->GetType() != ENTITY_TYPE::BALL && eB->GetType() == ENTITY_TYPE::BALL)
+					{
+						eA->OnCollideWithBall(uB, fixA, n);
+					}
+
+				}
 			}
 		}
 		list = list->GetNext();
