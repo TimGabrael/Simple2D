@@ -94,7 +94,7 @@ struct Projectile : public Entity
 		MULTI_TARGET,
 	};
 	virtual void UpdateFrame(float dt);
-	bool OnHitEnemy(struct Character* hit);
+	bool OnHitEnemy(struct Character* hit, uint32_t idx);
 	virtual void Update(float dt) { }
 
 	SceneObject* obj;
@@ -116,46 +116,36 @@ enum CHARACTER_TYPES
 
 struct Character : public Entity
 {
+	enum ANIMATION
+	{
+		IDLE,
+		ATTACK,
+		HURT,
+		DIE,
+		MOVE,
+	};
 	void UpdateAnimation(float dt);
+	void SetAnimation(ANIMATION anim);
 	SceneObject* obj = nullptr;
 	float animTimer = 0.0f;
 	uint32_t animIdx = 0;
 	int health = 100;
+	uint32_t activeAnimation = 0;
+	bool playAnimOnce = false;
 };
 
 struct Player : public Character
 {
-	enum ANIMATION
-	{
-		IDLE,
-		ATTACK,
-		HURT,
-	};
 	~Player() = default;
 	virtual void Update(float dt) {};
 	virtual void UpdateFrame(float dt) override;
-	void SetAnimation(ANIMATION anim);
-	uint32_t activeAnimation = 0;
-	bool playAnimOnce = false;
 };
 
 struct Slime : public Character
 {
-	enum ANIMATION
-	{
-		IDLE,
-		ATTACK,
-		MOVE,
-		HURT,
-		DIE,
-	};
 	~Slime() = default;
 	virtual void Update(float dt) {};
 	virtual void UpdateFrame(float dt) override;
-
-	void SetAnimation(ANIMATION anim);
-	uint32_t activeAnimation = 0;
-	bool playAnimOnce = false;
 };
 
 

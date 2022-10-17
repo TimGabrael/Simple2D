@@ -210,7 +210,32 @@ void Projectile::UpdateFrame(float dt)
 	GameManager* m = GM_GetGameManager();
 	const float move = 6.0f * dt;
 	TextureQuad* q = (TextureQuad*)obj->renderable;
+
+	float prevX = q->pos.x;
 	q->pos.x += move;
+	float curX = q->pos.x;
+
+	for (uint32_t i = 0; i < m->enemyList.size(); i++)
+	{
+		AnimatedQuad* anim = (AnimatedQuad*)m->enemyList.at(i)->renderable;
+		
+		const float start = anim->pos.x - anim->halfSize.x;
+		if (prevX < start && curX >= start)
+		{
+			if (!OnHitEnemy((Character*)m->enemyList.at(i)->entity, i))
+			{
+				for (uint32_t i = 0; i < m->projList.size(); i++)
+				{
+					if (m->projList.at(i)->entity == this)
+					{
+						RemoveProjectileObject(i);
+						return;
+					}
+				}
+			}
+		}
+	}
+
 	if (q->pos.x + q->halfSize.x > m->vpEnd.x)
 	{
 		for (uint32_t i = 0; i < m->projList.size(); i++)
@@ -223,9 +248,18 @@ void Projectile::UpdateFrame(float dt)
 		}
 	}
 }
-bool Projectile::OnHitEnemy(struct Character* hit)
+// RETURN TRUE IF THE PROJECTILE SHOULD CONTINUE TO TRAVEL
+bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 {
 	hit->health = glm::max(hit->health - 10, 0);
+	if (hit->health <= 0)
+	{
+		hit->SetAnimation(Character::DIE);
+	}
+	else
+	{
+		hit->SetAnimation(Character::HURT);
+	}
 	return true;
 }
 
@@ -240,6 +274,12 @@ void Character::UpdateAnimation(float dt)
 		animIdx++;
 		animTimer -= animStepTime;
 	}
+}
+void Character::SetAnimation(ANIMATION anim)
+{
+	if (anim != IDLE && anim != MOVE)  playAnimOnce = true;
+	animIdx = 0;
+	activeAnimation = anim;
 }
 void Player::UpdateFrame(float dt)
 {
@@ -266,12 +306,6 @@ void Player::UpdateFrame(float dt)
 		}
 	}
 }
-void Player::SetAnimation(ANIMATION anim)
-{
-	if (anim != IDLE)  playAnimOnce = true;
-	animIdx = 0;
-	activeAnimation = anim;
-}
 
 void Slime::UpdateFrame(float dt)
 {
@@ -290,7 +324,12 @@ void Slime::UpdateFrame(float dt)
 				if (playAnimOnce)
 				{
 					if (activeAnimation == DIE) {
-						
+						GameManager* m = GM_GetGameManager();
+						for (uint32_t i = 0; i < m->enemyList.size(); i++)
+						{
+							RemoveEnemyObject(i);
+							return;
+						}
 					}
 					else
 					{
@@ -303,12 +342,6 @@ void Slime::UpdateFrame(float dt)
 			r->animStepIdx = animIdx;
 		}
 	}
-}
-void Slime::SetAnimation(ANIMATION anim)
-{
-	if (anim != IDLE) playAnimOnce = true;
-	animIdx = 0;
-	activeAnimation = anim;
 }
 
 
@@ -544,6 +577,8 @@ SceneObject* CreatePlayerObject(Scene* scene, const glm::vec2& pos, float size)
 	anim->AddAnimRange(SPRITES::FOX_IDLE_0, SPRITES::FOX_IDLE_4 + 1);
 	anim->AddAnimRange(SPRITES::FOX_LEAP_0, SPRITES::FOX_LEAP_10 + 1);
 	anim->AddAnimRange(SPRITES::FOX_SHOCK_0, SPRITES::FOX_SHOCK_4 + 1);
+	anim->AddAnimRange(SPRITES::FOX_LAY_0, SPRITES::FOX_LAY_6 + 1);
+	anim->AddAnimRange(SPRITES::FOX_WALK_0, SPRITES::FOX_WALK_7 + 1);
 
 	((Character*)res->entity)->obj = res;
 	GM_GetGameManager()->player = res;
@@ -611,9 +646,9 @@ SceneObject* CreateEnemyObject(Scene* scene, const glm::vec2& pos, float size, C
 		res->entity = slime;
 		q->AddAnimRange(SLIME_IDLE_0, SLIME_IDLE_3 + 1);
 		q->AddAnimRange(SLIME_ATTACK_0, SLIME_ATTACK_4 + 1);
-		q->AddAnimRange(SLIME_MOVE_0, SLIME_MOVE_3 + 1);
 		q->AddAnimRange(SLIME_HURT_0, SLIME_HURT_3 + 1);
 		q->AddAnimRange(SLIME_DIE_0, SLIME_DIE_3 + 1);
+		q->AddAnimRange(SLIME_MOVE_0, SLIME_MOVE_3 + 1);
 	}
 	m->enemyList.push_back(res);
 	return res;

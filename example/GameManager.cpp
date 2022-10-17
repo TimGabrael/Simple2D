@@ -52,7 +52,7 @@ void GameManager::RenderCallback(GameState* state)
 
 	//ImGui::ShowDemoWindow(nullptr);
 
-	ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
+	//ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
 
 	if (background)
 	{
