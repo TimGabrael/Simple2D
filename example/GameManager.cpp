@@ -11,9 +11,26 @@ float GetRandomFloat(float start, float end)
 	return dist(mt);
 }
 
+void GameManager::OnAllBallsFell()
+{
+	Player* p = (Player*)player->entity;
+	p->SetAnimation(Player::ATTACK);
+	
+	AnimatedQuad* q = (AnimatedQuad*)player->renderable;
+	CreateProjectileObject(GetGameState()->scene, q->pos + glm::vec2(0.1f, -0.1f), 0.05f);
 
+}
 void GameManager::RenderCallback(GameState* state)
 {
+	
+	if (ballsAreFalling)
+	{
+		if (ballList.size() == 0)
+		{
+			OnAllBallsFell();
+		}
+	}
+	ballsAreFalling = ballList.size() > 0;
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, state->winWidth, state->winHeight);
@@ -154,6 +171,24 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 		RemoveAllObjects();
 		FillScene();
 	}
+	if (action == GLFW_PRESS && key == GLFW_KEY_P)
+	{
+		GameManager* m = GM_GetGameManager();
+		if (m->player && m->player->entity)
+		{
+			Player* p = (Player*)m->player->entity;
+			p->SetAnimation(Player::HURT);
+		}
+	}
+	if (action == GLFW_PRESS && key == GLFW_KEY_K)
+	{
+		GameManager* m = GM_GetGameManager();
+		if (m->player && m->player->entity)
+		{
+			Player* p = (Player*)m->player->entity;
+			p->SetAnimation(Player::ATTACK);
+		}
+	}
 }
 
 void GameManager::OnMouseButton(int button, int action, int mods)
@@ -203,10 +238,9 @@ void FillScene()
 {
 	GameState* game = GetGameState();
 	SceneObject* base = CreateBaseObject(game->scene);
-	//for (uint32_t i = 0; i < 300; i++)
-	//{
-	//	SceneObject* peg = CreatePegObject(game->scene, { GetRandomFloat(-1.4f, 1.4f), GetRandomFloat(-1.5f, 1.0f) }, 0.05f);
-	//}
+	Base* b = (Base*)base->entity;
+	
+	CreatePlayerObject(game->scene, { b->startBound.x - 0.5f, b->endBound.y + 0.2f }, 0.2f);
 
 	CreateFieldFromCharacters((Base*)base->entity, 
 		"###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n");
@@ -255,10 +289,17 @@ void CreateFieldFromCharacters(Base* b, const char* field)
 			else
 			{
 				glm::vec2 pos = {b->startBound.x + i * stepX + 0.1f, curY};
-				CreatePegObject(state->scene, pos, 0.05f);
+				CreatePegObject(state->scene, pos, 0.05f, ENTITY_TYPE::STANDARD_PEG);
 			}
 		}
 		curY -= stepY;
 		first = lineEnd + 1;
 	}
+}
+
+void PlaySound(SOUNDS sound, float volume)
+{
+	GameState* s = GetGameState();
+	GameManager* m = GM_GetGameManager();
+	AU_PlayAudio(s->audio, m->audioFiles.at(sound), volume);
 }

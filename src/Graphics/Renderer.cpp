@@ -365,6 +365,24 @@ struct Renderer* RE_CreateRenderer()
 	}
 	return out;
 }
+void RE_CleanUpRenderer(struct Renderer* r)
+{
+	glDeleteProgram(r->info.program);
+	r->info.program = 0;
+	r->info.viewProjLoc = 0;
+	CleanUpPostProcessingRenderInfo(&r->ppInfo);
+	glDeleteVertexArrays(1, &r->vao);
+	glDeleteBuffers(1, &r->vertexBuffer);
+	glDeleteBuffers(1, &r->indexBuffer);
+	glDeleteTextures(1, &r->blackTexture);
+	glDeleteTextures(1, &r->whiteTexture);
+	r->vao = 0;
+	r->vertexBuffer = 0;
+	r->indexBuffer = 0;
+	r->blackTexture = 0;
+	r->whiteTexture = 0;
+	delete r;
+}
 
 void RE_CreateIntermediateRenderData(IntermediateRenderData* data, uint32_t width, uint32_t height)
 {

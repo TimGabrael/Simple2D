@@ -5,6 +5,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "Physics/Physics.h"
+#include "Audio/AudioManager.h"
 
 #define TIME_STEP 1.0f / 60.0f
 
@@ -47,6 +48,8 @@ struct GameState
 };
 
 GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight, float gravity);
+void CleanUpGameState(GameState* state);
+
 GameState* GetGameState();
 void SetFullscreen(GameState* state, int monitorIdx, int* width, int* height);
 void SetWindowed(GameState* state, int width, int height);

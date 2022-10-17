@@ -109,6 +109,8 @@ bool WavFile::LoadFromMemory(const void* data, int size)
 	if (this->data) delete[] this->data;
 	this->data = nullptr;
 
+	numChannels = 2; sampleRate = 44100;
+
 	std::string header(fileData, fileData + 4);
 	if (header != "RIFF") return false;	// file is not a wav file
 
@@ -147,6 +149,7 @@ bool WavFile::LoadFromMemory(const void* data, int size)
 	int samplesStartIndex = d + 8;
 	this->numSamples = fileNumSamples;
 
+	
 	bool needsResampling = false;
 	float sampleDiff = 1.0f;
 	if (this->sampleRate != fileSampleRate)

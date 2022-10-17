@@ -3,6 +3,7 @@
 #include "Graphics/Renderer.h"
 #include "Physics/Physics.h"
 
+
 static GameState* g_gameState = nullptr;
 
 static void WindowPositionCallback(GLFWwindow* window, int x, int y)
@@ -165,6 +166,7 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	g_gameState->physics = PH_CreatePhysicsScene(gravity);
 	g_gameState->scene = SC_CreateScene();
 	g_gameState->renderer = RE_CreateRenderer();
+	g_gameState->audio = AU_CreateAudioManager();
 
 	g_gameState->aspectRatio = (float)windowWidth / (float)windowHeight;
 
@@ -194,6 +196,21 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	}
 
 	return g_gameState;
+}
+void CleanUpGameState(GameState* state)
+{
+	// SCENE NEEDS TO BE DELETED BEFORE PH SCENE !!!
+	SC_CleanUpScene(state->scene);
+	PH_CleanUpPhysicsScene(state->physics);
+	RE_CleanUpRenderer(state->renderer);
+	AU_ShutdownAudioManager(state->audio);
+	state->scene = 0;
+	state->renderer = 0;
+	state->audio = 0;
+	state->physics = 0;
+	glfwDestroyWindow(state->window);
+	state->window = nullptr;
+	delete state;
 }
 
 GameState* GetGameState()
@@ -263,7 +280,7 @@ void UpateGameState()
 
 		if (g_gameState->winWidth > 0 && g_gameState->winHeight > 0)
 		{
-
+			SC_UpdateFrame(g_gameState->scene, dt);
 			glEnable(GL_DEPTH_TEST);
 			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);

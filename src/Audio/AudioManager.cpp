@@ -94,7 +94,6 @@ struct AudioManager
 };
 
 
-
 static void AudioStutterCallback(void* clientData)
 {
 }
@@ -117,6 +116,7 @@ static int AudioRenderCallback(void* clientData, float* frames, int numberOfFram
 					frames[j * 2] += data[(j + cur->index) * 2] * cur->volume;
 					frames[j * 2 + 1] += data[(j + cur->index) * 2 + 1] * cur->volume;
 				}
+
 				cur->index += end;
 				cur->remaining -= end;
 				if (cur->remaining <= 0)
@@ -211,7 +211,7 @@ AudioPlaybackContext* AU_PlayAudio(struct AudioManager* manager, WavFile* file, 
 	if (!file) return nullptr;
 
 	if (manager->currentNumPlaying >= NUM_CONCURRENT_AUDIO_STREAMS) return nullptr;
-
+	
 	AudioPlaybackContext* result = nullptr;
 	for (int i = 0; i < NUM_CONCURRENT_AUDIO_STREAMS; i++)
 	{

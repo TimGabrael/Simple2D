@@ -220,3 +220,17 @@ void SC_Update(struct Scene* scene, float dt)
 	// rebuild in case any objects were created in the entity update function
 	SC_GetAllSceneObjects(scene, &num);
 }
+void SC_UpdateFrame(struct Scene* scene, float dt)
+{
+	uint32_t num = 0;
+	SceneObject** obj = SC_GetAllSceneObjects(scene, &num);
+	for (int i = 0; i < num; i++)
+	{
+		if (obj[i]->entity)
+		{
+			obj[i]->entity->UpdateFrame(dt);
+		}
+	}
+	// rebuild in case any objects were created in the entity update function
+	SC_GetAllSceneObjects(scene, &num);
+}

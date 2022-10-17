@@ -120,14 +120,16 @@ void Ball::OnCollideWithBall(struct SceneObject* ball, b2Fixture* fixture, const
 {
 }
 
-Peg::Peg(const glm::vec2& pos)
+Peg::Peg(const glm::vec2& pos, ENTITY_TYPE type)
 {
 	this->pos = pos;
+	this->type = type;
+	flags = 0;
 }
 
 ENTITY_TYPE Peg::GetType() const
 {
-	return ENTITY_TYPE::STANDARD_PEG;
+	return type;
 }
 
 void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal)
@@ -136,21 +138,114 @@ void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::ve
 	if (ball->renderable)
 	{
 		GameManager* m = GM_GetGameManager();
-		m->accumulatedDamage += 1;
-		for (uint32_t i = 0; i < m->pegList.size(); i++)
+		switch (type)
 		{
-			if (this == m->pegList.at(i)->entity)
+		case STANDARD_PEG:
+			m->accumulatedDamage += 1;
+			SetInactive();
+			break;
+		case REFRESH_PEG:
+			m->accumulatedDamage += 1;
+			for (uint32_t i = 0; i < m->pegList.size(); i++)
 			{
-				RemovePegObject(i);
-				break;
+				((Peg*)m->pegList.at(i)->entity)->SetActive();
 			}
-		}
+			break;
+		default:
+			break;
+		};
+		PlaySound(SOUNDS::SOUND_CLACK, 2.0f);
 	}
 	else
 	{
 		obj->body->SetEnabled(false);
 	}
 }
+void Peg::SetInactive()
+{
+	((TextureQuad*)obj->renderable)->col = (((TextureQuad*)obj->renderable)->col & 0xFFFFFF) | (0x80 << 24);
+	obj->body->SetEnabled(false);
+	flags |= PEG_FLAGS::INACTIVE;
+}
+void Peg::SetActive()
+{
+	((TextureQuad*)obj->renderable)->col = (((TextureQuad*)obj->renderable)->col & 0xFFFFFF) | (0xFF << 24);
+	obj->body->SetEnabled(true);
+	flags &= PEG_FLAGS::INACTIVE;
+}
+
+
+void Projectile::UpdateFrame(float dt)
+{
+	GameManager* m = GM_GetGameManager();
+	const float move = 6.0f * dt;
+	TextureQuad* q = (TextureQuad*)obj->renderable;
+	q->pos.x += move;
+	if (q->pos.x + q->halfSize.x > m->vpEnd.x)
+	{
+		for (uint32_t i = 0; i < m->projList.size(); i++)
+		{
+			if (m->projList.at(i)->entity == this)
+			{
+				RemoveProjectileObject(i);
+				return;
+			}
+		}
+	}
+}
+bool Projectile::OnHitEnemy(struct Character* hit)
+{
+	hit->health = glm::max(hit->health - 10, 0);
+	return true;
+}
+
+
+
+void Character::UpdateAnimation(float dt)
+{
+	static constexpr float animStepTime = 1.0f / 10.0f;
+	this->animTimer += dt;
+	while (animTimer >= animStepTime)
+	{
+		animIdx++;
+		animTimer -= animStepTime;
+	}
+}
+void Player::UpdateFrame(float dt)
+{
+	UpdateAnimation(dt);
+	if (obj->renderable)
+	{
+		AnimatedQuad* r = (AnimatedQuad*)obj->renderable;
+		r->animIdx = activeAnimation;
+		if (this->activeAnimation < r->range.size())
+		{
+			uint32_t oldAnimIdx = animIdx;
+			auto range = r->range.at(activeAnimation);
+			animIdx = (animIdx % (range.endIdx - range.startIdx));
+			if (animIdx < oldAnimIdx)
+			{
+				if (playAnimOnce)
+				{
+					animIdx = 0;
+					activeAnimation = 0;
+					playAnimOnce = false;
+				}
+			}
+			r->animStepIdx = animIdx;
+		}
+	}
+}
+void Player::SetAnimation(ANIMATION anim)
+{
+	if (anim != IDLE)  playAnimOnce = true;
+	animIdx = 0;
+	activeAnimation = anim;
+}
+
+
+
+
 
 
 
@@ -196,6 +291,7 @@ std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& veloc
 
 	for (uint32_t i = 0; i < m->pegList.size(); i++)
 	{
+		if (((Peg*)m->pegList.at(i)->entity)->flags & Peg::PEG_FLAGS::INACTIVE) continue;
 		m->pegList.at(i)->body->SetEnabled(true);
 	}
 
@@ -318,8 +414,14 @@ SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec
 	return res;
 }
 
-SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size)
+SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size, ENTITY_TYPE type)
 {
+
+	SPRITES pegSprites[ENTITY_TYPE::NUM_ENTITYS] = {
+		SPRITES::DISH_2, SPRITES::DISH_2,
+		SPRITES::PIZZA, SPRITES::BURGER,
+	};
+
 	GameState* game = GetGameState();
 
 	b2BodyDef body{};
@@ -347,10 +449,10 @@ SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size)
 
 	GameManager* m = (GameManager*)game->manager;
 
-	const AtlasTexture::UVBound& bound = m->atlas->bounds[SPRITES::PIZZA];
+	const AtlasTexture::UVBound& bound = m->atlas->bounds[pegSprites[type]];
 
 	SceneObject obj;
-	obj.entity = new Peg(pos);
+	obj.entity = new Peg(pos, type);
 	obj.body = collBody;
 	obj.renderable = new TextureQuad(pos, { (size + PADDING), (size + PADDING) }, bound.start, bound.end, m->atlas->texture.uniform);
 	obj.flags = 0;
@@ -364,7 +466,52 @@ SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size)
 	return res;
 }
 
-void RemoveBaseObject(SceneObject* obj)
+SceneObject* CreatePlayerObject(Scene* scene, const glm::vec2& pos, float size)
+{
+	SceneObject obj;
+	Player* p = new Player;
+	AnimatedQuad* anim = new AnimatedQuad(pos, { size, size }, GM_GetGameManager()->atlas, 0xFFFFFFFF, 1);
+	obj.entity = p;
+	obj.body = nullptr;
+	obj.renderable = anim;
+	obj.flags = 0;
+	SceneObject* res = SC_AddObject(scene, &obj);
+	
+	anim->AddAnimRange(SPRITES::FOX_IDLE_0, SPRITES::FOX_IDLE_4 + 1);
+	anim->AddAnimRange(SPRITES::FOX_LEAP_0, SPRITES::FOX_LEAP_10 + 1);
+	anim->AddAnimRange(SPRITES::FOX_SHOCK_0, SPRITES::FOX_SHOCK_4 + 1);
+
+	((Character*)res->entity)->obj = res;
+	GM_GetGameManager()->player = res;
+
+	return res;
+}
+SceneObject* CreateProjectileObject(Scene* scene, const glm::vec2& pos, float size)
+{
+	Projectile* proj = new Projectile();
+	proj->flags = 0;
+	proj->type = BASE_PROJECTILE;
+
+	GameManager* m = GM_GetGameManager();
+	AtlasTexture::UVBound& bound = m->atlas->bounds[DISH_2];
+
+	SceneObject obj;
+	obj.body = nullptr;
+	obj.entity = proj;
+	obj.flags = 0;
+	obj.renderable = new TextureQuad(pos, { size, size }, bound.start, bound.end, m->atlas->texture.uniform, 0xFFFFFFFF, 1);
+
+	SceneObject* res = SC_AddObject(scene, &obj);
+	proj->obj = res;
+
+	m->projList.push_back(res);
+
+	return res;
+}
+
+
+
+void RemoveBaseObject()
 {
 	GameManager* m = GM_GetGameManager();
 	GameState* state = GetGameState();
@@ -394,6 +541,26 @@ void RemovePegObject(size_t idx)
 		m->pegList.erase(m->pegList.begin() + idx);
 	}
 }
+void RemoveProjectileObject(size_t idx)
+{
+	GameManager* m = GM_GetGameManager();
+	if (idx < m->projList.size())
+	{
+		GameState* state = GetGameState();
+		SC_RemoveObject(state->scene, m->projList.at(idx));
+		m->projList.erase(m->projList.begin() + idx);
+	}
+}
+void RemovePlayerObject()
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	if (m->background)
+	{
+		SC_RemoveObject(state->scene, m->player);
+		m->player = nullptr;
+	}
+}
 void RemoveAllBalls()
 {
 	GameManager* m = GM_GetGameManager();
@@ -414,6 +581,16 @@ void RemoveAllPegs()
 	}
 	m->pegList.clear();
 }
+void RemoveAllProjectiles()
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	for (uint32_t i = 0; i < m->projList.size(); i++)
+	{
+		SC_RemoveObject(state->scene, m->projList.at(i));
+	}
+	m->projList.clear();
+}
 void RemoveAllObjects()
 {
 	GameManager* m = GM_GetGameManager();
@@ -422,4 +599,5 @@ void RemoveAllObjects()
 	m->pegList.clear();
 	m->ballList.clear();
 	m->background = nullptr;
+	m->player = nullptr;
 }

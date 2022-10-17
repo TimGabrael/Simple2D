@@ -1,5 +1,6 @@
 #pragma once
 #include "GameState.h"
+#include "Audio/AudioManager.h"
 #define PADDING b2_polygonRadius
 
 enum SPRITES
@@ -106,13 +107,78 @@ enum SPRITES
 	TACO_DISH,
 	WAFFLE,
 	WAFFLE_DISH,
+	FOX_IDLE_0,
+	FOX_IDLE_1,
+	FOX_IDLE_2,
+	FOX_IDLE_3,
+	FOX_IDLE_4,
+	FOX_LAY_0,
+	FOX_LAY_1,
+	FOX_LAY_2,
+	FOX_LAY_3,
+	FOX_LAY_4,
+	FOX_LAY_5,
+	FOX_LAY_6,
+	FOX_LEAP_0,
+	FOX_LEAP_1,
+	FOX_LEAP_2,
+	FOX_LEAP_3,
+	FOX_LEAP_4,
+	FOX_LEAP_5,
+	FOX_LEAP_6,
+	FOX_LEAP_7,
+	FOX_LEAP_8,
+	FOX_LEAP_9,
+	FOX_LEAP_10,
+	FOX_LOOK_0,
+	FOX_LOOK_1,
+	FOX_LOOK_2,
+	FOX_LOOK_3,
+	FOX_LOOK_4,
+	FOX_LOOK_5,
+	FOX_LOOK_6,
+	FOX_LOOK_7,
+	FOX_LOOK_8,
+	FOX_LOOK_9,
+	FOX_LOOK_10,
+	FOX_LOOK_11,
+	FOX_LOOK_12,
+	FOX_LOOK_13,
+	FOX_SHOCK_0,
+	FOX_SHOCK_1,
+	FOX_SHOCK_2,
+	FOX_SHOCK_3,
+	FOX_SHOCK_4,
+	FOX_SLEEP_0,
+	FOX_SLEEP_1,
+	FOX_SLEEP_2,
+	FOX_SLEEP_3,
+	FOX_SLEEP_4,
+	FOX_SLEEP_5,
+	FOX_WALK_0,
+	FOX_WALK_1,
+	FOX_WALK_2,
+	FOX_WALK_3,
+	FOX_WALK_4,
+	FOX_WALK_5,
+	FOX_WALK_6,
+	FOX_WALK_7,
 
 
 	NUM_SPRITES,
 };
 
+enum SOUNDS
+{
+	SOUND_CLACK,
+	NUM_SOUNDS,
+};
+
+
 struct GameManager : public BaseGameManager
 {
+	void OnAllBallsFell();
+
 	virtual void RenderCallback(GameState* state) override;
 	virtual void Update(float dt) override;
 
@@ -124,9 +190,13 @@ struct GameManager : public BaseGameManager
 	virtual void OnMouseButton(int button, int action, int mods) override;
 	virtual void OnMousePositionChanged(float x, float y, float dx, float dy) override;
 
+	std::vector<WavFile*> audioFiles;
+
 	std::vector<SceneObject*> ballList;
 	std::vector<SceneObject*> pegList;
+	std::vector<SceneObject*> projList;
 	SceneObject* background;
+	SceneObject* player;
 	glm::vec2 vpStart;
 	glm::vec2 vpEnd;
 	glm::vec2 targetDir;
@@ -135,6 +205,7 @@ struct GameManager : public BaseGameManager
 	AtlasTexture* atlas = nullptr;
 	FontMetrics* metrics = nullptr;
 	uint32_t accumulatedDamage = 0;
+	bool ballsAreFalling = false;
 };
 
 GameManager* GM_CreateGameManager(GameState* state);
@@ -147,3 +218,5 @@ float GetRandomFloat(float start, float end);
 void FillScene();
 
 void CreateFieldFromCharacters(struct Base* b, const char* field);
+
+void PlaySound(SOUNDS sound, float volume);

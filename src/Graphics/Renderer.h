@@ -34,6 +34,7 @@ struct PostProcessingRenderData
 
 
 struct Renderer* RE_CreateRenderer();
+void RE_CleanUpRenderer(struct Renderer* r);
 
 void RE_CreateIntermediateRenderData(IntermediateRenderData* data, uint32_t width, uint32_t height);
 void RE_CleanUpIntermediateRenderData(IntermediateRenderData* data);

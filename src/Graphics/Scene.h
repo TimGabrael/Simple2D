@@ -5,6 +5,7 @@ struct Entity
 {
 	virtual ~Entity() = default;
 	virtual void Update(float dt) = 0;
+	virtual void UpdateFrame(float dt) = 0;
 };
 
 enum OBJECT_FLAGS
@@ -32,3 +33,4 @@ void SC_RemoveObject(struct Scene* scene, SceneObject* obj);
 SceneObject** SC_GetAllSceneObjects(struct Scene* scene, uint32_t* num);
 
 void SC_Update(struct Scene* scene, float dt);
+void SC_UpdateFrame(struct Scene* scene, float dt);

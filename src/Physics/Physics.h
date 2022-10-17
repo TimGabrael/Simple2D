@@ -9,5 +9,6 @@ struct PhysicsScene
 };
 
 PhysicsScene* PH_CreatePhysicsScene(float gravity);
+void PH_CleanUpPhysicsScene(PhysicsScene* ph);
 
 void PH_Update(PhysicsScene* physics, float dt);
