@@ -107,6 +107,8 @@ enum SPRITES
 	TACO_DISH,
 	WAFFLE,
 	WAFFLE_DISH,
+
+
 	FOX_IDLE_0,
 	FOX_IDLE_1,
 	FOX_IDLE_2,
@@ -165,6 +167,28 @@ enum SPRITES
 	FOX_WALK_7,
 
 
+	SLIME_ATTACK_0,
+	SLIME_ATTACK_1,
+	SLIME_ATTACK_2,
+	SLIME_ATTACK_3,
+	SLIME_ATTACK_4,
+	SLIME_DIE_0,
+	SLIME_DIE_1,
+	SLIME_DIE_2,
+	SLIME_DIE_3,
+	SLIME_HURT_0,
+	SLIME_HURT_1,
+	SLIME_HURT_2,
+	SLIME_HURT_3,
+	SLIME_IDLE_0,
+	SLIME_IDLE_1,
+	SLIME_IDLE_2,
+	SLIME_IDLE_3,
+	SLIME_MOVE_0,
+	SLIME_MOVE_1,
+	SLIME_MOVE_2,
+	SLIME_MOVE_3,
+
 	NUM_SPRITES,
 };
 
@@ -195,6 +219,7 @@ struct GameManager : public BaseGameManager
 	std::vector<SceneObject*> ballList;
 	std::vector<SceneObject*> pegList;
 	std::vector<SceneObject*> projList;
+	std::vector<SceneObject*> enemyList;
 	SceneObject* background = nullptr;
 	SceneObject* player = nullptr;
 	SceneObject* particleHandler = nullptr;
@@ -223,5 +248,6 @@ void GM_FillScene();
 
 void GM_CreateFieldFromCharacters(struct Base* b, const char* field);
 
+enum ENTITY_TYPE GM_GenerateRandomPegType();
 
 void GM_PlaySound(SOUNDS sound, float volume);

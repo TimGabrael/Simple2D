@@ -21,7 +21,7 @@ struct PeggleEntity : public Entity
 
 struct Base : public PeggleEntity
 {
-	Base();
+	Base(const glm::vec2& st, const glm::vec2& sbound, const glm::vec2& ebound);
 	virtual ~Base();
 
 	virtual void Update(float dt);
@@ -61,6 +61,8 @@ struct Peg : public PeggleEntity
 	virtual ~Peg() = default;
 	virtual void Update(float dt) {}
 	virtual void UpdateFrame(float dt) { }
+
+	void UpdatePegType(ENTITY_TYPE type);
 
 	virtual ENTITY_TYPE GetType() const override;
 	virtual void OnCollideWithBall(struct SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal) override;
@@ -107,6 +109,7 @@ struct Projectile : public Entity
 enum CHARACTER_TYPES
 {
 	PLAYER,
+	SLIME,
 	NUM_CHARACTERS,
 };
 
@@ -136,6 +139,25 @@ struct Player : public Character
 	bool playAnimOnce = false;
 };
 
+struct Slime : public Character
+{
+	enum ANIMATION
+	{
+		IDLE,
+		ATTACK,
+		MOVE,
+		HURT,
+		DIE,
+	};
+	~Slime() = default;
+	virtual void Update(float dt) {};
+	virtual void UpdateFrame(float dt) override;
+
+	void SetAnimation(ANIMATION anim);
+	uint32_t activeAnimation = 0;
+	bool playAnimOnce = false;
+};
+
 
 
 
@@ -148,6 +170,7 @@ SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size, ENT
 SceneObject* CreatePlayerObject(Scene* scene, const glm::vec2& pos, float size);
 SceneObject* CreateProjectileObject(Scene* scene, const glm::vec2& pos, float size);
 SceneObject* CreateParticlesBaseObject(Scene* scene);
+SceneObject* CreateEnemyObject(Scene* scene, const glm::vec2& pos, float size, CHARACTER_TYPES c);
 
 void RemoveBaseObject();
 void RemoveBallObject(size_t idx);
@@ -155,8 +178,10 @@ void RemovePegObject(size_t idx);
 void RemovePlayerObject();
 void RemoveProjectileObject(size_t idx);
 void RemoveParticlesBaseObject();
+void RemoveEnemyObject(uint32_t idx);
 
 void RemoveAllBalls();
 void RemoveAllPegs();
 void RemoveAllProjectiles();
+void RemoveAllEnemyObjects();
 void RemoveAllObjects();

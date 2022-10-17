@@ -53,6 +53,22 @@ int main()
 				AM_AtlasAddFromFile(build, f.c_str());
 			}
 		}
+		{
+			std::filesystem::path path = "Assets/slime";
+			std::vector<std::string> fileList;
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(path))
+			{
+				if (entry.is_regular_file() && entry.path().extension() == ".png")
+				{
+					fileList.emplace_back(entry.path().string());
+				}
+			}
+			for (const auto& f : fileList)
+			{
+				AM_AtlasAddFromFile(build, f.c_str());
+			}
+		}
+		AM_AtlasAddGlyphRangeFromFile(build, "Assets/consola.ttf", 'A', 'z' + 1, 20.0f);
 		manager->atlas = AM_EndTextureAtlas(build, false);
 	}
 

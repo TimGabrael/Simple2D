@@ -1,9 +1,17 @@
 #include "Entitys.h"
 
 
+static SPRITES g_pegSprites[ENTITY_TYPE::NUM_ENTITYS] = {
+		SPRITES::DISH_2, SPRITES::DISH_2,
+		SPRITES::PIZZA, SPRITES::BURGER,
+};
+
+
 struct BaseRenderable : public Renderable
 {
-	BaseRenderable() {
+	BaseRenderable(const glm::vec2& sBound, const glm::vec2& eBound) {
+		this->startBound = sBound;
+		this->endBound = eBound;
 		this->texture = 0;// GM_GetGameManager()->atlas->texture.uniform;
 		this->layer = 0;
 	}
@@ -16,8 +24,8 @@ struct BaseRenderable : public Renderable
 
 
 		verts.push_back({ {m->vpStart.x, m->vpStart.y }, {0.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {-1.5f, m->vpStart.y }, {1.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {-1.5f, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
+		verts.push_back({ {startBound.x, m->vpStart.y }, {1.0f, 1.0f}, 0x60FFFFFF });
+		verts.push_back({ {startBound.x, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
 		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, 0x60FFFFFF });
 
 		inds.push_back(cur);
@@ -28,10 +36,10 @@ struct BaseRenderable : public Renderable
 		inds.push_back(cur);
 
 		cur = verts.size();
-		verts.push_back({ {1.5f, m->vpStart.y }, {0.0f, 1.0f}, 0x60FFFFFF });
+		verts.push_back({ {endBound.x, m->vpStart.y }, {0.0f, 1.0f}, 0x60FFFFFF });
 		verts.push_back({ {m->vpEnd.x, m->vpStart.y }, {1.0f, 1.0f}, 0x60FFFFFF });
 		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
-		verts.push_back({ {1.5f, m->vpEnd.y }, {0.0f, 0.0f}, 0x60FFFFFF });
+		verts.push_back({ {endBound.x, m->vpEnd.y }, {0.0f, 0.0f}, 0x60FFFFFF });
 
 		inds.push_back(cur);
 		inds.push_back(cur + 1);
@@ -42,8 +50,8 @@ struct BaseRenderable : public Renderable
 
 
 		cur = verts.size();
-		verts.push_back({ {m->vpStart.x, 1.5f }, {0.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {m->vpEnd.x, 1.5f }, {1.0f, 1.0f}, 0x60FFFFFF });
+		verts.push_back({ {m->vpStart.x,endBound.y }, {0.0f, 1.0f}, 0x60FFFFFF });
+		verts.push_back({ {m->vpEnd.x, endBound.y }, {1.0f, 1.0f}, 0x60FFFFFF });
 		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
 		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, 0x60FFFFFF });
 
@@ -57,14 +65,17 @@ struct BaseRenderable : public Renderable
 
 	}
 	virtual void UpdateFromBody(b2Body* body) {};
+
+	glm::vec2 startBound;
+	glm::vec2 endBound;
 };
 
 
-Base::Base()
+Base::Base(const glm::vec2& st, const glm::vec2& sbound, const glm::vec2& ebound)
 {
-	startPos = glm::vec2(0.0f, 1.3f);
-	startBound = glm::vec2(-1.5f);
-	endBound = glm::vec2(1.5f);
+	startPos = st;
+	startBound = sbound;
+	endBound = ebound;
 }
 Base::~Base()
 {
@@ -127,11 +138,19 @@ Peg::Peg(const glm::vec2& pos, ENTITY_TYPE type)
 	flags = 0;
 }
 
+void Peg::UpdatePegType(ENTITY_TYPE type)
+{
+	GameManager* m = GM_GetGameManager();
+	this->type = type;
+	TextureQuad* q = (TextureQuad*)this->obj->renderable;
+	AtlasTexture::UVBound& bound = m->atlas->bounds[g_pegSprites[type]];
+	q->uvStart = bound.start;
+	q->uvEnd = bound.end;
+}
 ENTITY_TYPE Peg::GetType() const
 {
 	return type;
 }
-
 void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal)
 {
 	ball->body->ApplyForceToCenter({ normal.x * 1.0f, normal.y * 1.0f }, true);
@@ -146,9 +165,15 @@ void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::ve
 			break;
 		case REFRESH_PEG:
 			m->accumulatedDamage += 1;
+			SetInactive();
 			for (uint32_t i = 0; i < m->pegList.size(); i++)
 			{
-				((Peg*)m->pegList.at(i)->entity)->SetActive();
+				Peg* p = (Peg*)m->pegList.at(i)->entity;
+				if (p->flags & PEG_FLAGS::INACTIVE)
+				{
+					p->UpdatePegType(GM_GenerateRandomPegType());
+					p->SetActive();
+				}
 			}
 			break;
 		default:
@@ -176,7 +201,7 @@ void Peg::SetActive()
 {
 	((TextureQuad*)obj->renderable)->col = (((TextureQuad*)obj->renderable)->col & 0xFFFFFF) | (0xFF << 24);
 	obj->body->SetEnabled(true);
-	flags &= PEG_FLAGS::INACTIVE;
+	flags &= ~PEG_FLAGS::INACTIVE;
 }
 
 
@@ -248,7 +273,43 @@ void Player::SetAnimation(ANIMATION anim)
 	activeAnimation = anim;
 }
 
-
+void Slime::UpdateFrame(float dt)
+{
+	UpdateAnimation(dt);
+	if (obj->renderable)
+	{
+		AnimatedQuad* r = (AnimatedQuad*)obj->renderable;
+		r->animIdx = activeAnimation;
+		if (this->activeAnimation < r->range.size())
+		{
+			uint32_t oldAnimIdx = animIdx;
+			auto range = r->range.at(activeAnimation);
+			animIdx = (animIdx % (range.endIdx - range.startIdx));
+			if (animIdx < oldAnimIdx)
+			{
+				if (playAnimOnce)
+				{
+					if (activeAnimation == DIE) {
+						
+					}
+					else
+					{
+						animIdx = 0;
+						activeAnimation = 0;
+						playAnimOnce = false;
+					}
+				}
+			}
+			r->animStepIdx = animIdx;
+		}
+	}
+}
+void Slime::SetAnimation(ANIMATION anim)
+{
+	if (anim != IDLE) playAnimOnce = true;
+	animIdx = 0;
+	activeAnimation = anim;
+}
 
 
 
@@ -308,7 +369,11 @@ SceneObject* CreateBaseObject(Scene* scene)
 {
 	GameState* game = GetGameState();
 
-	Base* base = new Base();
+	static constexpr glm::vec2 startPos = glm::vec2(0.0f, 1.1f);
+	static constexpr glm::vec2 startBound = glm::vec2(-1.5f);
+	static constexpr glm::vec2 endBound = glm::vec2(1.5f, 1.3);
+
+	Base* base = new Base(startPos, startBound, endBound);
 	{
 		b2BodyDef body{};
 		body.type = b2_staticBody;
@@ -353,7 +418,7 @@ SceneObject* CreateBaseObject(Scene* scene)
 	SceneObject obj;
 	obj.entity = base;
 	obj.body = nullptr;
-	obj.renderable = new BaseRenderable();
+	obj.renderable = new BaseRenderable(startBound, endBound);
 	obj.flags = 0;
 	SceneObject* res = SC_AddObject(scene, &obj);
 
@@ -406,7 +471,7 @@ SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec
 	obj.body = collBody;
 	obj.renderable = new TextureQuad(pos, {(size + PADDING), (size + PADDING) }, bound.start, bound.end, m->atlas->texture.uniform);
 	obj.flags = 0;
-	obj.renderable->layer = 1;
+	obj.renderable->layer = 2;
 	SceneObject* res = SC_AddObject(scene, &obj);
 	collBody->GetUserData().pointer = (uintptr_t)res;
 
@@ -421,12 +486,6 @@ SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec
 
 SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size, ENTITY_TYPE type)
 {
-
-	SPRITES pegSprites[ENTITY_TYPE::NUM_ENTITYS] = {
-		SPRITES::DISH_2, SPRITES::DISH_2,
-		SPRITES::PIZZA, SPRITES::BURGER,
-	};
-
 	GameState* game = GetGameState();
 
 	b2BodyDef body{};
@@ -454,7 +513,7 @@ SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size, ENT
 
 	GameManager* m = (GameManager*)game->manager;
 
-	const AtlasTexture::UVBound& bound = m->atlas->bounds[pegSprites[type]];
+	const AtlasTexture::UVBound& bound = m->atlas->bounds[g_pegSprites[type]];
 
 	SceneObject obj;
 	obj.entity = new Peg(pos, type);
@@ -505,7 +564,7 @@ SceneObject* CreateProjectileObject(Scene* scene, const glm::vec2& pos, float si
 	obj.entity = proj;
 	obj.flags = 0;
 	obj.renderable = new TextureQuad(pos, { size, size }, bound.start, bound.end, m->atlas->texture.uniform, 0xFFFFFFFF, 1);
-
+	obj.renderable->layer = 1;
 	SceneObject* res = SC_AddObject(scene, &obj);
 	proj->obj = res;
 
@@ -534,7 +593,31 @@ SceneObject* CreateParticlesBaseObject(Scene* scene)
 	GM_GetGameManager()->particleHandler = res;
 	return res;
 }
-
+SceneObject* CreateEnemyObject(Scene* scene, const glm::vec2& pos, float size, CHARACTER_TYPES c)
+{
+	GameManager* m = GM_GetGameManager();
+	AnimatedQuad* q = new AnimatedQuad(pos, glm::vec2(size), m->atlas);
+	q->layer = 1;
+	SceneObject obj;
+	obj.body = nullptr;
+	obj.entity = nullptr;
+	obj.flags = 0;
+	obj.renderable = q;
+	SceneObject* res = SC_AddObject(scene, &obj);
+	if (c == CHARACTER_TYPES::SLIME)
+	{
+		Slime* slime = new Slime;
+		slime->obj = res;
+		res->entity = slime;
+		q->AddAnimRange(SLIME_IDLE_0, SLIME_IDLE_3 + 1);
+		q->AddAnimRange(SLIME_ATTACK_0, SLIME_ATTACK_4 + 1);
+		q->AddAnimRange(SLIME_MOVE_0, SLIME_MOVE_3 + 1);
+		q->AddAnimRange(SLIME_HURT_0, SLIME_HURT_3 + 1);
+		q->AddAnimRange(SLIME_DIE_0, SLIME_DIE_3 + 1);
+	}
+	m->enemyList.push_back(res);
+	return res;
+}
 
 void RemoveBaseObject()
 {
@@ -595,6 +678,15 @@ void RemoveParticlesBaseObject()
 		m->particleHandler = nullptr;
 	}
 }
+void RemoveEnemyObject(uint32_t idx)
+{
+	GameManager* m = GM_GetGameManager();
+	if (idx < m->enemyList.size())
+	{
+		SC_RemoveObject(GetGameState()->scene, m->enemyList.at(idx));
+		m->enemyList.erase(m->enemyList.begin() + idx);
+	}
+}
 void RemoveAllBalls()
 {
 	GameManager* m = GM_GetGameManager();
@@ -625,6 +717,16 @@ void RemoveAllProjectiles()
 	}
 	m->projList.clear();
 }
+void RemoveAllEnemyObjects()
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	for (uint32_t i = 0; i < m->enemyList.size(); i++)
+	{
+		SC_RemoveObject(state->scene, m->enemyList.at(i));
+	}
+	m->enemyList.clear();
+}
 void RemoveAllObjects()
 {
 	GameManager* m = GM_GetGameManager();
@@ -632,6 +734,8 @@ void RemoveAllObjects()
 	SC_RemoveAll(state->scene);
 	m->pegList.clear();
 	m->ballList.clear();
+	m->projList.clear();
+	m->enemyList.clear();
 	m->background = nullptr;
 	m->player = nullptr;
 }

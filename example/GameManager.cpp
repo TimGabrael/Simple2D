@@ -3,7 +3,7 @@
 #include <random>
 #include <string>
 
-float GetRandomFloat(float start, float end)
+float GM_GetRandomFloat(float start, float end)
 {
 	std::random_device rd;
 	std::mt19937 mt(rd());
@@ -52,7 +52,7 @@ void GameManager::RenderCallback(GameState* state)
 
 	//ImGui::ShowDemoWindow(nullptr);
 
-	//ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
+	ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
 
 	if (background)
 	{
@@ -66,7 +66,7 @@ void GameManager::RenderCallback(GameState* state)
 		targetDir = relMouse;
 
 
-		std::vector<glm::vec2> list = SimulateBall(b->startPos, targetDir * startVelocity, 0.05f, 50.0f);
+		std::vector<glm::vec2> list = SimulateBall(b->startPos, targetDir * startVelocity, 0.05f, 1.0f);
 		if (list.size() > 0)
 		{
 			ImVec2* imList = new ImVec2[list.size()];
@@ -79,8 +79,8 @@ void GameManager::RenderCallback(GameState* state)
 			delete[] imList;
 		}
 
-		const glm::vec2 winStart = {((float)state->winWidth / vpSz.x) * (b->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (b->startBound.y - vpStart.y) };
-		const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - b->endBound.x + 0.01f), ((float)state->winHeight / vpSz.y) * (vpEnd.y - b->startBound.y + 0.01f) };
+		const glm::vec2 winStart = {((float)state->winWidth / vpSz.x) * (b->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (vpEnd.y - b->endBound.y) };
+		const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - b->endBound.x + 0.01f), ((float)state->winHeight / vpSz.y) * (b->endBound.y - vpStart.y + 0.01f) };
 		
 
 		ImGui::SetNextWindowDockID(0);
@@ -248,6 +248,7 @@ void GM_FillScene()
 	CreateParticlesBaseObject(game->scene);
 
 	CreatePlayerObject(game->scene, { b->startBound.x - 0.5f, b->endBound.y + 0.2f }, 0.2f);
+	CreateEnemyObject(game->scene, { b->endBound.x + 0.5f, b->endBound.y + 0.2f }, 0.2f, CHARACTER_TYPES::SLIME);
 
 	GM_CreateFieldFromCharacters((Base*)base->entity,
 		"###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n");
@@ -296,12 +297,19 @@ void GM_CreateFieldFromCharacters(Base* b, const char* field)
 			else
 			{
 				glm::vec2 pos = {b->startBound.x + i * stepX + 0.1f, curY};
-				CreatePegObject(state->scene, pos, 0.05f, ENTITY_TYPE::STANDARD_PEG);
+				CreatePegObject(state->scene, pos, 0.05f, GM_GenerateRandomPegType());
 			}
 		}
 		curY -= stepY;
 		first = lineEnd + 1;
 	}
+}
+
+ENTITY_TYPE GM_GenerateRandomPegType()
+{
+	const float rd = GM_GetRandomFloat(0.0f, 1.0f);
+	if (rd < 0.95f) return ENTITY_TYPE::STANDARD_PEG;
+	else return ENTITY_TYPE::REFRESH_PEG;
 }
 
 void GM_PlaySound(SOUNDS sound, float volume)
