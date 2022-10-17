@@ -33,6 +33,8 @@ struct Base : public PeggleEntity
 	b2Body* right;
 	b2Body* top;
 	glm::vec2 startPos;
+	glm::vec2 startBound;
+	glm::vec2 endBound;
 };
 
 struct Ball : public PeggleEntity

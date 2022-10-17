@@ -14,14 +14,6 @@ PhysicsScene* PH_CreatePhysicsScene(float gravity)
 {
 	PhysicsScene* res = new PhysicsScene(gravity);
 
-	b2BodyDef body;
-	body.type = b2_staticBody;
-	body.position = { 0.0f, 0.0f };
-	body.angle = 0.0f;
-
-	auto b = res->world.CreateBody(&body);
-
-
 	return res;
 }
 

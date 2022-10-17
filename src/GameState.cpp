@@ -129,7 +129,7 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	g_gameState->winHeight = windowHeight;
 	g_gameState->mouseX = 0;
 	g_gameState->mouseY = 0;
-
+	g_gameState->accumulatedTime = 0.0f;
 
 	glfwMakeContextCurrent(window);
 	glfwSetWindowAspectRatio(window, 16, 9);

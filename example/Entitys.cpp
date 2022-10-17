@@ -63,6 +63,8 @@ struct BaseRenderable : public Renderable
 Base::Base()
 {
 	startPos = glm::vec2(0.0f, 1.3f);
+	startBound = glm::vec2(-1.5f);
+	endBound = glm::vec2(1.5f);
 }
 Base::~Base()
 {
@@ -134,6 +136,7 @@ void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::ve
 	if (ball->renderable)
 	{
 		GameManager* m = GM_GetGameManager();
+		m->accumulatedDamage += 1;
 		for (uint32_t i = 0; i < m->pegList.size(); i++)
 		{
 			if (this == m->pegList.at(i)->entity)
@@ -208,7 +211,7 @@ SceneObject* CreateBaseObject(Scene* scene)
 	{
 		b2BodyDef body{};
 		body.type = b2_staticBody;
-		body.position = { -2.0f, 0.0f };
+		body.position = { base->startBound.x - 0.5f, 0.0f };
 		body.angle = 0.0f;
 		body.enabled = true;
 		body.allowSleep = true;
@@ -231,13 +234,13 @@ SceneObject* CreateBaseObject(Scene* scene)
 		base->left = collLeft;
 
 
-		body.position = { 2.0f, 0.0f };
+		body.position = { base->endBound.x + 0.5f, 0.0f };
 		b2Body* collRight = game->physics->world.CreateBody(&body);
 		collRight->CreateFixture(&fixture);
 		base->right = collRight;
 
 
-		body.position = { 0.0f, 2.0f };
+		body.position = { 0.0f, base->endBound.y + 0.5f };
 		b2Body* collTop = game->physics->world.CreateBody(&body);
 
 		shape.SetAsBox(4.0f, 0.5f); 

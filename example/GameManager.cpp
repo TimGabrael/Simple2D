@@ -1,6 +1,7 @@
 #include "GameManager.h"
 #include "Entitys.h"
 #include <random>
+#include <string>
 
 float GetRandomFloat(float start, float end)
 {
@@ -39,8 +40,9 @@ void GameManager::RenderCallback(GameState* state)
 	if (background)
 	{
 		Base* b = (Base*)background->entity;
+		const glm::vec2 vpSz = vpEnd - vpStart;
 		glm::vec2 relMouse = { state->mouseX / (float)state->winWidth, state->mouseY / (float)state->winHeight };
-		relMouse = vpStart + (vpEnd - vpStart) * relMouse;
+		relMouse = vpStart + vpSz * relMouse;
 		relMouse.y = -relMouse.y;
 		relMouse = glm::normalize(relMouse - b->startPos);
 
@@ -55,11 +57,28 @@ void GameManager::RenderCallback(GameState* state)
 			{
 				imList[i].x = (list.at(i).x - vpStart.x) / (vpEnd.x - vpStart.x) * state->winWidth;
 				imList[i].y = (list.at(i).y - vpEnd.y) / (vpStart.y - vpEnd.y) * state->winHeight;
-
 			}
-			ImGui::GetForegroundDrawList()->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
+			ImGui::GetBackgroundDrawList()->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
 			delete[] imList;
 		}
+
+		const glm::vec2 winStart = {((float)state->winWidth / vpSz.x) * (b->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (b->startBound.y - vpStart.y) };
+		const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - b->endBound.x + 0.01f), ((float)state->winHeight / vpSz.y) * (vpEnd.y - b->startBound.y + 0.01f) };
+		
+
+		ImGui::SetNextWindowDockID(0);
+
+		ImGui::SetNextWindowPos({ winStart.x, winStart.y });
+		ImGui::SetNextWindowSize({winSize.x, winSize.y});
+
+		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_WindowBg, 0xFF404060);
+
+
+		ImGui::Begin("DATA", 0, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar);
+		ImGui::Text("DAMAGE: %s", std::to_string(accumulatedDamage).c_str());
+		ImGui::End();
+
+		ImGui::PopStyleColor();
 	}
 
 	ImGui::Render();
@@ -132,10 +151,7 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS && key == GLFW_KEY_R)
 	{
-		GameState* state = GetGameState();
-		GameManager* m = (GameManager*)state->manager;
-		SC_RemoveAll(state->scene);
-		m->ballList.clear();
+		RemoveAllObjects();
 		FillScene();
 	}
 }
@@ -149,8 +165,12 @@ void GameManager::OnMouseButton(int button, int action, int mods)
 		GameManager* m = GM_GetGameManager();
 		if (button == GLFW_MOUSE_BUTTON_LEFT && m->background)
 		{
-			Base* b = (Base*)m->background->entity;
-			SceneObject* obj = CreateBallObject(game->scene, b->startPos, { m->targetDir * m->startVelocity }, 0.05f);
+			if (m->ballList.size() == 0)
+			{
+				m->accumulatedDamage = 0;
+				Base* b = (Base*)m->background->entity;
+				SceneObject* obj = CreateBallObject(game->scene, b->startPos, { m->targetDir * m->startVelocity }, 0.05f);
+			}
 		}
 	}
 }
@@ -183,8 +203,62 @@ void FillScene()
 {
 	GameState* game = GetGameState();
 	SceneObject* base = CreateBaseObject(game->scene);
-	for (uint32_t i = 0; i < 300; i++)
+	//for (uint32_t i = 0; i < 300; i++)
+	//{
+	//	SceneObject* peg = CreatePegObject(game->scene, { GetRandomFloat(-1.4f, 1.4f), GetRandomFloat(-1.5f, 1.0f) }, 0.05f);
+	//}
+
+	CreateFieldFromCharacters((Base*)base->entity, 
+		"###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n");
+}
+
+void CreateFieldFromCharacters(Base* b, const char* field)
+{
+	GameState* state = GetGameState();
+
+	const glm::vec2 playSize = b->endBound - b->startBound - glm::vec2(0.1f, 0.5f);
+
+	float curY = b->endBound.y - 0.8f;
+
+	const size_t fieldLen = strnlen(field, 100000);
+	uint32_t lineCount = 1;
+	for (uint32_t i = 0; i < fieldLen-1; i++)
 	{
-		SceneObject* peg = CreatePegObject(game->scene, { GetRandomFloat(-1.4f, 1.4f), GetRandomFloat(-1.5f, 1.0f) }, 0.05f);
+		if (field[i] == '\n') lineCount++;
+	}
+
+	const float stepY = playSize.y / (float)lineCount;
+
+
+	size_t first = 0;
+	while (true)
+	{
+		size_t lineEnd = -1;
+		for (size_t j = first; j < fieldLen; j++)
+		{
+			if (field[j] == '\n') {
+				lineEnd = j;
+				break;
+			}
+		}
+		if (lineEnd == -1) lineEnd = fieldLen;
+
+		if (first == lineEnd) break;
+
+		const uint32_t steps = lineEnd - first;
+
+		float stepX = playSize.x / (float)steps;
+
+		for (size_t i = 0; i < steps; i++)
+		{
+			if (field[i + first] == ' ') continue;
+			else
+			{
+				glm::vec2 pos = {b->startBound.x + i * stepX + 0.1f, curY};
+				CreatePegObject(state->scene, pos, 0.05f);
+			}
+		}
+		curY -= stepY;
+		first = lineEnd + 1;
 	}
 }

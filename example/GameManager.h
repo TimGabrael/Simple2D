@@ -134,6 +134,7 @@ struct GameManager : public BaseGameManager
 	glm::mat4 viewProj;
 	AtlasTexture* atlas = nullptr;
 	FontMetrics* metrics = nullptr;
+	uint32_t accumulatedDamage = 0;
 };
 
 GameManager* GM_CreateGameManager(GameState* state);
@@ -144,3 +145,5 @@ GameManager* GM_GetGameManager();
 float GetRandomFloat(float start, float end);
 
 void FillScene();
+
+void CreateFieldFromCharacters(struct Base* b, const char* field);
