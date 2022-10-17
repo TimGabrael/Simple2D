@@ -169,7 +169,7 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 	if (action == GLFW_PRESS && key == GLFW_KEY_R)
 	{
 		RemoveAllObjects();
-		FillScene();
+		GM_FillScene();
 	}
 	if (action == GLFW_PRESS && key == GLFW_KEY_P)
 	{
@@ -233,20 +233,27 @@ GameManager* GM_GetGameManager()
 	return (GameManager*)GetGameState()->manager;
 }
 
+void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime)
+{
+	ParticlesBase* b = (ParticlesBase*)GM_GetGameManager()->particleHandler->renderable;
+	if (b) b->AddParticle(pos, vel, sizeBegin, sizeEnd, colBegin, colEnd, sprite, rotationBegin, rotationEnd, lifeTime);
+}
 
-void FillScene()
+void GM_FillScene()
 {
 	GameState* game = GetGameState();
 	SceneObject* base = CreateBaseObject(game->scene);
 	Base* b = (Base*)base->entity;
-	
+
+	CreateParticlesBaseObject(game->scene);
+
 	CreatePlayerObject(game->scene, { b->startBound.x - 0.5f, b->endBound.y + 0.2f }, 0.2f);
 
-	CreateFieldFromCharacters((Base*)base->entity, 
+	GM_CreateFieldFromCharacters((Base*)base->entity,
 		"###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n");
 }
 
-void CreateFieldFromCharacters(Base* b, const char* field)
+void GM_CreateFieldFromCharacters(Base* b, const char* field)
 {
 	GameState* state = GetGameState();
 
@@ -297,7 +304,7 @@ void CreateFieldFromCharacters(Base* b, const char* field)
 	}
 }
 
-void PlaySound(SOUNDS sound, float volume)
+void GM_PlaySound(SOUNDS sound, float volume)
 {
 	GameState* s = GetGameState();
 	GameManager* m = GM_GetGameManager();

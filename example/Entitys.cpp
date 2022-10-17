@@ -134,7 +134,7 @@ ENTITY_TYPE Peg::GetType() const
 
 void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal)
 {
-	ball->body->ApplyForceToCenter({ normal.x * 0.1f, normal.y * 0.1f }, true);
+	ball->body->ApplyForceToCenter({ normal.x * 1.0f, normal.y * 1.0f }, true);
 	if (ball->renderable)
 	{
 		GameManager* m = GM_GetGameManager();
@@ -154,7 +154,12 @@ void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::ve
 		default:
 			break;
 		};
-		PlaySound(SOUNDS::SOUND_CLACK, 2.0f);
+		if (obj->renderable)
+		{
+			TextureQuad* q = (TextureQuad*)obj->renderable;
+			GM_AddParticle(this->pos, glm::vec2(0.0f), glm::vec2(q->halfSize), glm::vec2(q->halfSize * 2.0f), 0xFFFFFFFF, 0x60FFFFFF, SPRITES::PIZZA, 0.0f, 0.0f, 0.2f);
+		}
+		GM_PlaySound(SOUNDS::SOUND_CLACK, 1.0f);
 	}
 	else
 	{
@@ -508,7 +513,27 @@ SceneObject* CreateProjectileObject(Scene* scene, const glm::vec2& pos, float si
 
 	return res;
 }
-
+SceneObject* CreateParticlesBaseObject(Scene* scene)
+{
+	struct ParticleHandlerEntity : public Entity
+	{
+		virtual ~ParticleHandlerEntity() = default;
+		virtual void Update(float dt) {};
+		virtual void UpdateFrame(float dt) {
+			ParticlesBase* base = (ParticlesBase*)GM_GetGameManager()->particleHandler->renderable;
+			base->Update(dt);
+		}
+	};
+	SceneObject obj;
+	obj.body = nullptr;
+	obj.entity = new ParticleHandlerEntity;
+	obj.flags = 0;
+	obj.renderable = new ParticlesBase(GM_GetGameManager()->atlas, 5000);
+	
+	SceneObject* res = SC_AddObject(scene, &obj);
+	GM_GetGameManager()->particleHandler = res;
+	return res;
+}
 
 
 void RemoveBaseObject()
@@ -541,6 +566,16 @@ void RemovePegObject(size_t idx)
 		m->pegList.erase(m->pegList.begin() + idx);
 	}
 }
+void RemovePlayerObject()
+{
+	GameManager* m = GM_GetGameManager();
+	GameState* state = GetGameState();
+	if (m->background)
+	{
+		SC_RemoveObject(state->scene, m->player);
+		m->player = nullptr;
+	}
+}
 void RemoveProjectileObject(size_t idx)
 {
 	GameManager* m = GM_GetGameManager();
@@ -551,14 +586,13 @@ void RemoveProjectileObject(size_t idx)
 		m->projList.erase(m->projList.begin() + idx);
 	}
 }
-void RemovePlayerObject()
+void RemoveParticlesBaseObject()
 {
 	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	if (m->background)
+	if (m->particleHandler)
 	{
-		SC_RemoveObject(state->scene, m->player);
-		m->player = nullptr;
+		SC_RemoveObject(GetGameState()->scene, m->particleHandler);
+		m->particleHandler = nullptr;
 	}
 }
 void RemoveAllBalls()

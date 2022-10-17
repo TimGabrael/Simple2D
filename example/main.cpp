@@ -61,7 +61,7 @@ int main()
 		manager->audioFiles.push_back(clackWav);
 	}
 	
-	FillScene();
+	GM_FillScene();
 	
 
 

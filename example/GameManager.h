@@ -195,8 +195,9 @@ struct GameManager : public BaseGameManager
 	std::vector<SceneObject*> ballList;
 	std::vector<SceneObject*> pegList;
 	std::vector<SceneObject*> projList;
-	SceneObject* background;
-	SceneObject* player;
+	SceneObject* background = nullptr;
+	SceneObject* player = nullptr;
+	SceneObject* particleHandler = nullptr;
 	glm::vec2 vpStart;
 	glm::vec2 vpEnd;
 	glm::vec2 targetDir;
@@ -213,10 +214,14 @@ GameManager* GM_CreateGameManager(GameState* state);
 GameManager* GM_GetGameManager();
 
 
-float GetRandomFloat(float start, float end);
+float GM_GetRandomFloat(float start, float end);
 
-void FillScene();
 
-void CreateFieldFromCharacters(struct Base* b, const char* field);
+void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime);
 
-void PlaySound(SOUNDS sound, float volume);
+void GM_FillScene();
+
+void GM_CreateFieldFromCharacters(struct Base* b, const char* field);
+
+
+void GM_PlaySound(SOUNDS sound, float volume);
