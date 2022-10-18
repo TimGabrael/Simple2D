@@ -3,6 +3,8 @@
 #include <charconv>
 #include "Entitys.h"
 
+
+
 int main()
 {
 	GameState* game = CreateGameState("Example2D", 1600, 900, -10.0f);

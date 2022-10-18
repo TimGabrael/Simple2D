@@ -1,10 +1,11 @@
 #include "Entitys.h"
+#include "GameManager.h"
 
-
-static SPRITES g_pegSprites[ENTITY_TYPE::NUM_ENTITYS] = {
+static constexpr SPRITES sprites[ENTITY_TYPE::NUM_ENTITYS] = {
 		SPRITES::DISH_2, SPRITES::DISH_2,
 		SPRITES::PIZZA, SPRITES::BURGER,
 };
+
 
 
 struct BaseRenderable : public Renderable
@@ -12,8 +13,6 @@ struct BaseRenderable : public Renderable
 	BaseRenderable(const glm::vec2& sBound, const glm::vec2& eBound) {
 		this->startBound = sBound;
 		this->endBound = eBound;
-		this->texture = 0;// GM_GetGameManager()->atlas->texture.uniform;
-		this->layer = 0;
 	}
 	virtual ~BaseRenderable() = default;
 	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
@@ -65,6 +64,18 @@ struct BaseRenderable : public Renderable
 
 	}
 	virtual void UpdateFromBody(b2Body* body) {};
+	virtual int GetLayer() const
+	{
+		return 0;
+	}
+	virtual GLuint GetTexture() const
+	{
+		return 0;
+	}
+	virtual GLuint GetFlags() const
+	{
+		return 0;
+	}
 
 	glm::vec2 startBound;
 	glm::vec2 endBound;
@@ -80,9 +91,56 @@ Base::Base(const glm::vec2& st, const glm::vec2& sbound, const glm::vec2& ebound
 	entYStart = endBound.y + 0.2f;
 	xSteps = 0.45f;
 	numInRow = 10;
+	this->rend = new BaseRenderable(startBound, endBound);
+
+	{
+		GameState* game = GetGameState();
+		b2BodyDef body{};
+		body.type = b2_staticBody;
+		body.position = { startBound.x - 0.5f, 0.0f };
+		body.angle = 0.0f;
+		body.enabled = true;
+		body.allowSleep = true;
+		body.fixedRotation = false;
+		body.gravityScale = 1.0f;
+		b2Body* collLeft = game->physics->world.CreateBody(&body);
+
+		b2PolygonShape shape;
+		shape.SetAsBox(0.5f, 4.0f);
+
+		b2FixtureDef fixture{};
+		fixture.density = 1.0f;
+		fixture.friction = 0.1f;
+		fixture.isSensor = false;
+		fixture.restitution = 0.1f;
+		fixture.restitutionThreshold = 0.0f;
+		fixture.shape = &shape;
+
+		collLeft->CreateFixture(&fixture);
+		left = collLeft;
+
+
+		body.position = { endBound.x + 0.5f, 0.0f };
+		b2Body* collRight = game->physics->world.CreateBody(&body);
+		collRight->CreateFixture(&fixture);
+		right = collRight;
+
+
+		body.position = { 0.0f, endBound.y + 0.5f };
+		b2Body* collTop = game->physics->world.CreateBody(&body);
+
+		shape.SetAsBox(4.0f, 0.5f);
+		collTop->CreateFixture(&fixture);
+		top = collTop;
+	}
+
+	left->GetUserData().pointer = (uintptr_t)this;
+	right->GetUserData().pointer = (uintptr_t)this;
+	top->GetUserData().pointer = (uintptr_t)this;
 }
 Base::~Base()
 {
+	delete rend;
 	PhysicsScene* phys = GetGameState()->physics;
 	phys->world.DestroyBody(left);
 	phys->world.DestroyBody(right);
@@ -104,7 +162,7 @@ void Base::Update(float dt)
 			if (m->ballList.at(i)->body->GetPosition().y < -2.1f)
 			{
 				found = true;
-				SC_RemoveObject(s->scene, m->ballList.at(i));
+				delete m->ballList.at(i);
 				m->ballList.erase(m->ballList.begin() + i);
 				break;
 			}
@@ -115,49 +173,114 @@ ENTITY_TYPE Base::GetType() const
 {
 	return ENTITY_TYPE::BASE;
 }
-void Base::OnCollideWithBall(struct SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal)
+void Base::OnCollideWithBall(struct Ball* ball, b2Fixture* fixture, const glm::vec2& normal)
 {
 	ball->body->ApplyForceToCenter({ normal.x * 0.2f, normal.y * 0.2f }, true);
 }
 
 
 
-Ball::Ball(const glm::vec2& pos)
+Ball::Ball(const glm::vec2& pos, const glm::vec2& velocity, float size) 
+	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[SPRITES::DISH_2].start, GM_GetGameManager()->atlas->bounds[SPRITES::DISH_2].end, GM_GetGameManager()->atlas->texture.uniform, 0xFFFFFFFF, 2)
 {
-	this->pos = pos;
+	GameState* game = GetGameState();
+	b2BodyDef bodyDef{};
+	bodyDef.type = b2_dynamicBody;
+	bodyDef.position = { pos.x, pos.y };
+	bodyDef.angle = 0.0f;
+	bodyDef.enabled = true;
+	bodyDef.allowSleep = false;
+	bodyDef.fixedRotation = false;
+	bodyDef.gravityScale = 1.0f;
+	body = game->physics->world.CreateBody(&bodyDef);
+
+	b2CircleShape shape;
+	shape.m_radius = size;
+
+
+	b2FixtureDef fixture{};
+	fixture.density = 1.0f;
+	fixture.friction = 0.1f;
+	fixture.isSensor = false;
+	fixture.restitution = 0.5f;
+	fixture.restitutionThreshold = 2.0f;
+	fixture.shape = &shape;
+	fixture.filter.maskBits = 1;
+	fixture.filter.categoryBits = 2;
+
+	body->CreateFixture(&fixture);
+	body->SetLinearVelocity({ velocity.x, velocity.y });
+	body->GetUserData().pointer = (uintptr_t)this;
+	simulated = false;
+}
+Ball::~Ball()
+{
+	GetGameState()->physics->world.DestroyBody(body);
+	body = nullptr;
 }
 ENTITY_TYPE Ball::GetType() const
 {
 	return ENTITY_TYPE::BALL;
 }
-void Ball::OnCollideWithBall(struct SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal)
+void Ball::OnCollideWithBall(struct Ball* ball, b2Fixture* fixture, const glm::vec2& normal)
 {
 }
-
-Peg::Peg(const glm::vec2& pos, ENTITY_TYPE type)
+void Ball::UpdateFrame(float dt) 
 {
-	this->pos = pos;
-	this->type = type;
+	quad.UpdateFromBody(body);
+}
+
+Peg::Peg(const glm::vec2& pos, float size, ENTITY_TYPE type) : 
+	quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[sprites[type]].start, GM_GetGameManager()->atlas->bounds[sprites[type]].end, GM_GetGameManager()->atlas->texture.uniform, 0xFFFFFFFF, 1)
+{
+	GameState* game = GetGameState();
+	b2BodyDef bodyDef{};
+	bodyDef.type = b2_staticBody;
+	bodyDef.position = { pos.x, pos.y };
+	bodyDef.angle = 0.0f;
+	bodyDef.enabled = true;
+	bodyDef.allowSleep = true;
+	bodyDef.fixedRotation = false;
+	bodyDef.gravityScale = 1.0f;
+	body = game->physics->world.CreateBody(&bodyDef);
+
+	b2CircleShape shape;
+	shape.m_radius = size;
+
+	b2FixtureDef fixture{};
+	fixture.density = 1.0f;
+	fixture.friction = 0.1f;
+	fixture.isSensor = false;
+	fixture.restitution = 0.1f;
+	fixture.restitutionThreshold = 0.0f;
+	fixture.shape = &shape;
+	body->CreateFixture(&fixture);
+	body->GetUserData().pointer = (uintptr_t)this;
 	flags = 0;
+	this->type = type;
+}
+Peg::~Peg()
+{
+	GetGameState()->physics->world.DestroyBody(body);
+	body = nullptr;
 }
 
 void Peg::UpdatePegType(ENTITY_TYPE type)
 {
 	GameManager* m = GM_GetGameManager();
 	this->type = type;
-	TextureQuad* q = (TextureQuad*)this->obj->renderable;
-	AtlasTexture::UVBound& bound = m->atlas->bounds[g_pegSprites[type]];
-	q->uvStart = bound.start;
-	q->uvEnd = bound.end;
+	AtlasTexture::UVBound& bound = m->atlas->bounds[sprites[type]];
+	quad.uvStart = bound.start;
+	quad.uvEnd = bound.end;
 }
 ENTITY_TYPE Peg::GetType() const
 {
 	return type;
 }
-void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal)
+void Peg::OnCollideWithBall(Ball* ball, b2Fixture* fixture, const glm::vec2& normal)
 {
 	ball->body->ApplyForceToCenter({ normal.x * 1.0f, normal.y * 1.0f }, true);
-	if (ball->renderable)
+	if (!ball->simulated)
 	{
 		GameManager* m = GM_GetGameManager();
 		switch (type)
@@ -171,7 +294,7 @@ void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::ve
 			SetInactive();
 			for (uint32_t i = 0; i < m->pegList.size(); i++)
 			{
-				Peg* p = (Peg*)m->pegList.at(i)->entity;
+				Peg* p = m->pegList.at(i);
 				if (p->flags & PEG_FLAGS::INACTIVE)
 				{
 					p->UpdatePegType(GM_GenerateRandomPegType());
@@ -182,56 +305,63 @@ void Peg::OnCollideWithBall(SceneObject* ball, b2Fixture* fixture, const glm::ve
 		default:
 			break;
 		};
-		if (obj->renderable)
-		{
-			TextureQuad* q = (TextureQuad*)obj->renderable;
-			GM_AddParticle(this->pos, glm::vec2(0.0f), glm::vec2(q->halfSize), glm::vec2(q->halfSize * 2.0f), 0xFFFFFFFF, 0x60FFFFFF, SPRITES::PIZZA, 0.0f, 0.0f, 0.2f);
-		}
+		
+		b2Vec2 pos = body->GetPosition();
+		GM_AddParticle({ pos.x, pos.y }, glm::vec2(0.0f), glm::vec2(quad.halfSize), glm::vec2(quad.halfSize * 2.0f), 0xFFFFFFFF, 0x60FFFFFF, SPRITES::PIZZA, 0.0f, 0.0f, 0.2f);
+		
 		GM_PlaySound(SOUNDS::SOUND_CLACK, 1.0f);
 	}
 	else
 	{
-		obj->body->SetEnabled(false);
+		body->SetEnabled(false);
 	}
 }
 void Peg::SetInactive()
 {
-	((TextureQuad*)obj->renderable)->col = (((TextureQuad*)obj->renderable)->col & 0xFFFFFF) | (0x80 << 24);
-	obj->body->SetEnabled(false);
+	quad.col = (quad.col & 0xFFFFFF) | (0x80 << 24);
+	body->SetEnabled(false);
 	flags |= PEG_FLAGS::INACTIVE;
 }
 void Peg::SetActive()
 {
-	((TextureQuad*)obj->renderable)->col = (((TextureQuad*)obj->renderable)->col & 0xFFFFFF) | (0xFF << 24);
-	obj->body->SetEnabled(true);
+	quad.col = (quad.col & 0xFFFFFF) | (0xFF << 24);
+	body->SetEnabled(true);
 	flags &= ~PEG_FLAGS::INACTIVE;
 }
 
+Projectile::Projectile(const glm::vec2& pos, float size, SPRITES sprite)
+	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[sprite].start, GM_GetGameManager()->atlas->bounds[sprite].end, GM_GetGameManager()->atlas->texture.uniform, 0xFFFFFFFF, 1)
+{
 
+}
+Projectile::~Projectile()
+{
+
+}
 void Projectile::UpdateFrame(float dt)
 {
 	GameManager* m = GM_GetGameManager();
 	const float move = 6.0f * dt;
-	TextureQuad* q = (TextureQuad*)obj->renderable;
 
-	float prevX = q->pos.x;
-	q->pos.x += move;
-	float curX = q->pos.x;
+	float prevX = quad.pos.x;
+	quad.pos.x += move;
+	float curX = quad.pos.x;
 
 	for (uint32_t i = 0; i < m->enemyList.size(); i++)
 	{
-		AnimatedQuad* anim = (AnimatedQuad*)m->enemyList.at(i)->renderable;
+		AnimatedQuad& anim = m->enemyList.at(i)->quad;
 		
-		const float start = anim->pos.x - anim->halfSize.x;
+		const float start = anim.pos.x - anim.halfSize.x;
 		if (prevX < start && curX >= start)
 		{
-			if (!OnHitEnemy((Character*)m->enemyList.at(i)->entity, i))
+			if (!OnHitEnemy(m->enemyList.at(i), i))
 			{
 				for (uint32_t i = 0; i < m->projList.size(); i++)
 				{
-					if (m->projList.at(i)->entity == this)
+					if (m->projList.at(i) == this)
 					{
-						RemoveProjectileObject(i);
+						delete this;
+						m->projList.erase(m->projList.begin() + i);
 						return;
 					}
 				}
@@ -239,13 +369,14 @@ void Projectile::UpdateFrame(float dt)
 		}
 	}
 
-	if (q->pos.x + q->halfSize.x > m->vpEnd.x)
+	if (quad.pos.x + quad.halfSize.x > m->vpEnd.x)
 	{
 		for (uint32_t i = 0; i < m->projList.size(); i++)
 		{
-			if (m->projList.at(i)->entity == this)
+			if (m->projList.at(i) == this)
 			{
-				RemoveProjectileObject(i);
+				delete this;
+				m->projList.erase(m->projList.begin() + i);
 				return;
 			}
 		}
@@ -267,7 +398,15 @@ bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 }
 
 
+Character::Character(const glm::vec2& pos, float size)
+	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas, 0xFFFFFFFF, 1)
+{
 
+}
+Character::~Character()
+{
+
+}
 void Character::UpdateAnimation(float dt)
 {
 	static constexpr float animStepTime = 1.0f / 10.0f;
@@ -284,70 +423,98 @@ void Character::SetAnimation(ANIMATION anim)
 	animIdx = 0;
 	activeAnimation = anim;
 }
+Player::Player(const glm::vec2& pos, float size) : Character(pos, size)
+{
+	quad.AddAnimRange(SPRITES::FOX_IDLE_0, SPRITES::FOX_IDLE_4 + 1);
+	quad.AddAnimRange(SPRITES::FOX_LEAP_0, SPRITES::FOX_LEAP_10 + 1);
+	quad.AddAnimRange(SPRITES::FOX_SHOCK_0, SPRITES::FOX_SHOCK_4 + 1);
+	quad.AddAnimRange(SPRITES::FOX_LAY_0, SPRITES::FOX_LAY_6 + 1);
+	quad.AddAnimRange(SPRITES::FOX_WALK_0, SPRITES::FOX_WALK_7 + 1);
+}
+Player::~Player()
+{
+
+}
 void Player::UpdateFrame(float dt)
 {
 	UpdateAnimation(dt);
-	if (obj->renderable)
+	
+	quad.animIdx = activeAnimation;
+	if (this->activeAnimation < quad.range.size())
 	{
-		AnimatedQuad* r = (AnimatedQuad*)obj->renderable;
-		r->animIdx = activeAnimation;
-		if (this->activeAnimation < r->range.size())
+		uint32_t oldAnimIdx = animIdx;
+		auto range = quad.range.at(activeAnimation);
+		animIdx = (animIdx % (range.endIdx - range.startIdx));
+		if (animIdx < oldAnimIdx)
 		{
-			uint32_t oldAnimIdx = animIdx;
-			auto range = r->range.at(activeAnimation);
-			animIdx = (animIdx % (range.endIdx - range.startIdx));
-			if (animIdx < oldAnimIdx)
+			if (playAnimOnce)
 			{
-				if (playAnimOnce)
+				animIdx = 0;
+				activeAnimation = 0;
+				playAnimOnce = false;
+			}
+		}
+		quad.animStepIdx = animIdx;
+	}
+	
+}
+
+Slime::Slime(const glm::vec2& pos, float size) : Character(pos, size)
+{
+	quad.AddAnimRange(SLIME_IDLE_0, SLIME_IDLE_3 + 1);
+	quad.AddAnimRange(SLIME_ATTACK_0, SLIME_ATTACK_4 + 1);
+	quad.AddAnimRange(SLIME_HURT_0, SLIME_HURT_3 + 1);
+	quad.AddAnimRange(SLIME_DIE_0, SLIME_DIE_3 + 1);
+	quad.AddAnimRange(SLIME_MOVE_0, SLIME_MOVE_3 + 1);
+}
+Slime::~Slime()
+{
+
+}
+void Slime::UpdateFrame(float dt)
+{
+	UpdateAnimation(dt);
+
+	quad.animIdx = activeAnimation;
+	if (this->activeAnimation < quad.range.size())
+	{
+		uint32_t oldAnimIdx = animIdx;
+		auto range = quad.range.at(activeAnimation);
+		animIdx = (animIdx % (range.endIdx - range.startIdx));
+		if (animIdx < oldAnimIdx)
+		{
+			if (playAnimOnce)
+			{
+				if (activeAnimation == DIE) {
+					GameManager* m = GM_GetGameManager();
+					for (uint32_t i = 0; i < m->enemyList.size(); i++)
+					{
+						delete m->enemyList.at(i);
+						m->enemyList.erase(m->enemyList.begin() + i);
+						return;
+					}
+				}
+				else
 				{
 					animIdx = 0;
 					activeAnimation = 0;
 					playAnimOnce = false;
 				}
 			}
-			r->animStepIdx = animIdx;
 		}
+		quad.animStepIdx = animIdx;
 	}
+	
 }
-
-void Slime::UpdateFrame(float dt)
+ParticleHandlerEntity::ParticleHandlerEntity()
+	: base(GM_GetGameManager()->atlas, 5000)
 {
-	UpdateAnimation(dt);
-	if (obj->renderable)
-	{
-		AnimatedQuad* r = (AnimatedQuad*)obj->renderable;
-		r->animIdx = activeAnimation;
-		if (this->activeAnimation < r->range.size())
-		{
-			uint32_t oldAnimIdx = animIdx;
-			auto range = r->range.at(activeAnimation);
-			animIdx = (animIdx % (range.endIdx - range.startIdx));
-			if (animIdx < oldAnimIdx)
-			{
-				if (playAnimOnce)
-				{
-					if (activeAnimation == DIE) {
-						GameManager* m = GM_GetGameManager();
-						for (uint32_t i = 0; i < m->enemyList.size(); i++)
-						{
-							RemoveEnemyObject(i);
-							return;
-						}
-					}
-					else
-					{
-						animIdx = 0;
-						activeAnimation = 0;
-						playAnimOnce = false;
-					}
-				}
-			}
-			r->animStepIdx = animIdx;
-		}
-	}
+
 }
+ParticleHandlerEntity::~ParticleHandlerEntity()
+{
 
-
+}
 
 
 
@@ -359,12 +526,10 @@ std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& veloc
 
 	std::vector<glm::vec2> accumulated = {pos};
 
-	SceneObject* obj = CreateBallObject(state->scene, pos, velocity, size);
-	if (obj->renderable)
-	{
-		delete obj->renderable;
-		obj->renderable = nullptr;
-	}
+	Ball* simBall = new Ball(pos, velocity, size);
+	simBall->simulated = true;
+	m->ballList.push_back(simBall);
+
 	while (simulateDuration >= TIME_STEP)
 	{
 		UpdateGameStep();
@@ -384,397 +549,29 @@ std::vector<glm::vec2> SimulateBall(const glm::vec2& pos, const glm::vec2& veloc
 	{
 		auto p = m->ballList.at(0)->body->GetPosition();
 		accumulated.push_back({ p.x, p.y });
-		for (uint32_t i = 0; i < m->ballList.size(); i++)
+		for (Ball* b : m->ballList)
 		{
-			SC_RemoveObject(state->scene, m->ballList.at(i));
+			delete b;
 		}
 		m->ballList.clear();
 	}
 
 	for (uint32_t i = 0; i < m->pegList.size(); i++)
 	{
-		if (((Peg*)m->pegList.at(i)->entity)->flags & Peg::PEG_FLAGS::INACTIVE) continue;
+		if (m->pegList.at(i)->flags & Peg::PEG_FLAGS::INACTIVE) continue;
 		m->pegList.at(i)->body->SetEnabled(true);
 	}
 
 	return accumulated;
 }
 
-
-SceneObject* CreateBaseObject(Scene* scene)
+Character* CreateEnemy(const glm::vec2& pos, float size, CHARACTER_TYPES c)
 {
-	GameState* game = GetGameState();
-
-	static constexpr glm::vec2 startPos = glm::vec2(0.0f, 1.1f);
-	static constexpr glm::vec2 startBound = glm::vec2(-1.5f);
-	static constexpr glm::vec2 endBound = glm::vec2(1.5f, 1.3);
-
-	Base* base = new Base(startPos, startBound, endBound);
-	{
-		b2BodyDef body{};
-		body.type = b2_staticBody;
-		body.position = { base->startBound.x - 0.5f, 0.0f };
-		body.angle = 0.0f;
-		body.enabled = true;
-		body.allowSleep = true;
-		body.fixedRotation = false;
-		body.gravityScale = 1.0f;
-		b2Body* collLeft = game->physics->world.CreateBody(&body);
-
-		b2PolygonShape shape;
-		shape.SetAsBox(0.5f, 4.0f);
-
-		b2FixtureDef fixture{};
-		fixture.density = 1.0f;
-		fixture.friction = 0.1f;
-		fixture.isSensor = false;
-		fixture.restitution = 0.1f;
-		fixture.restitutionThreshold = 0.0f;
-		fixture.shape = &shape;
-
-		collLeft->CreateFixture(&fixture);
-		base->left = collLeft;
-
-
-		body.position = { base->endBound.x + 0.5f, 0.0f };
-		b2Body* collRight = game->physics->world.CreateBody(&body);
-		collRight->CreateFixture(&fixture);
-		base->right = collRight;
-
-
-		body.position = { 0.0f, base->endBound.y + 0.5f };
-		b2Body* collTop = game->physics->world.CreateBody(&body);
-
-		shape.SetAsBox(4.0f, 0.5f); 
-		collTop->CreateFixture(&fixture);
-		base->top = collTop;
-		
-	}
-
-	SceneObject obj;
-	obj.entity = base;
-	obj.body = nullptr;
-	obj.renderable = new BaseRenderable(startBound, endBound);
-	obj.flags = 0;
-	SceneObject* res = SC_AddObject(scene, &obj);
-
-	base->obj = res;
-
-	base->left->GetUserData().pointer = (uintptr_t)res;
-	base->right->GetUserData().pointer = (uintptr_t)res;
-	base->top->GetUserData().pointer = (uintptr_t)res;
-
-	GM_GetGameManager()->background = res;
-
-	return res;
-}
-
-SceneObject* CreateBallObject(Scene* scene, const glm::vec2& pos, const glm::vec2& velocity, float size)
-{
-	GameState* game = GetGameState();
-	b2BodyDef body{};
-	body.type = b2_dynamicBody;
-	body.position = { pos.x, pos.y };
-	body.angle = 0.0f;
-	body.enabled = true;
-	body.allowSleep = false;
-	body.fixedRotation = false;
-	body.gravityScale = 1.0f;
-	b2Body* collBody = game->physics->world.CreateBody(&body);
-
-	b2CircleShape shape;
-	shape.m_radius = size;
-	
-	
-	b2FixtureDef fixture{};
-	fixture.density = 1.0f;
-	fixture.friction = 0.1f;
-	fixture.isSensor = false;
-	fixture.restitution = 0.5f;
-	fixture.restitutionThreshold = 2.0f;
-	fixture.shape = &shape;
-	fixture.filter.maskBits = 1;
-	fixture.filter.categoryBits = 2;
-
-	collBody->CreateFixture(&fixture);
-
-	GameManager* m = (GameManager*)game->manager;
-
-	const AtlasTexture::UVBound& bound = m->atlas->bounds[SPRITES::DISH_2];
-
-	SceneObject obj;
-	obj.entity = new Ball(pos);
-	obj.body = collBody;
-	obj.renderable = new TextureQuad(pos, {(size + PADDING), (size + PADDING) }, bound.start, bound.end, m->atlas->texture.uniform);
-	obj.flags = 0;
-	obj.renderable->layer = 2;
-	SceneObject* res = SC_AddObject(scene, &obj);
-	collBody->GetUserData().pointer = (uintptr_t)res;
-
-	res->body->SetLinearVelocity({ velocity.x, velocity.y });
-	collBody->SetAwake(true);
-	
-	((PeggleEntity*)res->entity)->obj = res;
-
-	GM_GetGameManager()->ballList.push_back(res);
-	return res;
-}
-
-SceneObject* CreatePegObject(Scene* scene, const glm::vec2& pos, float size, ENTITY_TYPE type)
-{
-	GameState* game = GetGameState();
-
-	b2BodyDef body{};
-	body.type = b2_staticBody;
-	body.position = { pos.x, pos.y };
-	body.angle = 0.0f;
-	body.enabled = true;
-	body.allowSleep = true;
-	body.fixedRotation = false;
-	body.gravityScale = 1.0f;
-	b2Body* collBody = game->physics->world.CreateBody(&body);
-
-	b2CircleShape shape;
-	shape.m_radius = size;
-
-	b2FixtureDef fixture{};
-	fixture.density = 1.0f;
-	fixture.friction = 0.1f;
-	fixture.isSensor = false;
-	fixture.restitution = 0.1f;
-	fixture.restitutionThreshold = 0.0f;
-	fixture.shape = &shape;
-
-	collBody->CreateFixture(&fixture);
-
-	GameManager* m = (GameManager*)game->manager;
-
-	const AtlasTexture::UVBound& bound = m->atlas->bounds[g_pegSprites[type]];
-
-	SceneObject obj;
-	obj.entity = new Peg(pos, type);
-	obj.body = collBody;
-	obj.renderable = new TextureQuad(pos, { (size + PADDING), (size + PADDING) }, bound.start, bound.end, m->atlas->texture.uniform);
-	obj.flags = 0;
-	obj.renderable->layer = 1;
-	SceneObject* res = SC_AddObject(scene, &obj);
-	collBody->GetUserData().pointer = (uintptr_t)res;
-	((PeggleEntity*)res->entity)->obj = res;
-
-	m->pegList.push_back(res);
-
-	return res;
-}
-
-SceneObject* CreatePlayerObject(Scene* scene, const glm::vec2& pos, float size)
-{
-	SceneObject obj;
-	Player* p = new Player;
-	AnimatedQuad* anim = new AnimatedQuad(pos, { size, size }, GM_GetGameManager()->atlas, 0xFFFFFFFF, 1);
-	obj.entity = p;
-	obj.body = nullptr;
-	obj.renderable = anim;
-	obj.flags = 0;
-	SceneObject* res = SC_AddObject(scene, &obj);
-	
-	anim->AddAnimRange(SPRITES::FOX_IDLE_0, SPRITES::FOX_IDLE_4 + 1);
-	anim->AddAnimRange(SPRITES::FOX_LEAP_0, SPRITES::FOX_LEAP_10 + 1);
-	anim->AddAnimRange(SPRITES::FOX_SHOCK_0, SPRITES::FOX_SHOCK_4 + 1);
-	anim->AddAnimRange(SPRITES::FOX_LAY_0, SPRITES::FOX_LAY_6 + 1);
-	anim->AddAnimRange(SPRITES::FOX_WALK_0, SPRITES::FOX_WALK_7 + 1);
-
-	((Character*)res->entity)->obj = res;
-	GM_GetGameManager()->player = res;
-
-	return res;
-}
-SceneObject* CreateProjectileObject(Scene* scene, const glm::vec2& pos, float size)
-{
-	Projectile* proj = new Projectile();
-	proj->flags = 0;
-	proj->type = BASE_PROJECTILE;
-
-	GameManager* m = GM_GetGameManager();
-	AtlasTexture::UVBound& bound = m->atlas->bounds[DISH_2];
-
-	SceneObject obj;
-	obj.body = nullptr;
-	obj.entity = proj;
-	obj.flags = 0;
-	obj.renderable = new TextureQuad(pos, { size, size }, bound.start, bound.end, m->atlas->texture.uniform, 0xFFFFFFFF, 1);
-	obj.renderable->layer = 1;
-	SceneObject* res = SC_AddObject(scene, &obj);
-	proj->obj = res;
-
-	m->projList.push_back(res);
-
-	return res;
-}
-SceneObject* CreateParticlesBaseObject(Scene* scene)
-{
-	struct ParticleHandlerEntity : public Entity
-	{
-		virtual ~ParticleHandlerEntity() = default;
-		virtual void Update(float dt) {};
-		virtual void UpdateFrame(float dt) {
-			ParticlesBase* base = (ParticlesBase*)GM_GetGameManager()->particleHandler->renderable;
-			base->Update(dt);
-		}
-	};
-	SceneObject obj;
-	obj.body = nullptr;
-	obj.entity = new ParticleHandlerEntity;
-	obj.flags = 0;
-	obj.renderable = new ParticlesBase(GM_GetGameManager()->atlas, 5000);
-	
-	SceneObject* res = SC_AddObject(scene, &obj);
-	GM_GetGameManager()->particleHandler = res;
-	return res;
-}
-SceneObject* CreateEnemyObject(Scene* scene, const glm::vec2& pos, float size, CHARACTER_TYPES c)
-{
-	GameManager* m = GM_GetGameManager();
-	AnimatedQuad* q = new AnimatedQuad(pos, glm::vec2(size), m->atlas);
-	q->layer = 1;
-	SceneObject obj;
-	obj.body = nullptr;
-	obj.entity = nullptr;
-	obj.flags = 0;
-	obj.renderable = q;
-	SceneObject* res = SC_AddObject(scene, &obj);
+	Character* res = nullptr;
 	if (c == CHARACTER_TYPES::SLIME)
 	{
-		q->pos.y -= 0.02f;
-		Slime* slime = new Slime;
-		slime->obj = res;
-		res->entity = slime;
-		q->AddAnimRange(SLIME_IDLE_0, SLIME_IDLE_3 + 1);
-		q->AddAnimRange(SLIME_ATTACK_0, SLIME_ATTACK_4 + 1);
-		q->AddAnimRange(SLIME_HURT_0, SLIME_HURT_3 + 1);
-		q->AddAnimRange(SLIME_DIE_0, SLIME_DIE_3 + 1);
-		q->AddAnimRange(SLIME_MOVE_0, SLIME_MOVE_3 + 1);
+		glm::vec2 realPos = { pos.x, pos.y - 0.02f };	// the slime sprite is not perfectly sized inside the bounding rectangle
+		res = new Slime(realPos, size);
 	}
-	m->enemyList.push_back(res);
 	return res;
-}
-
-void RemoveBaseObject()
-{
-	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	if (m->background)
-	{
-		SC_RemoveObject(state->scene, m->background);
-		m->background = nullptr;
-	}
-}
-void RemoveBallObject(size_t idx)
-{
-	GameManager* m = GM_GetGameManager();
-	if (idx < m->ballList.size())
-	{
-		GameState* state = GetGameState();
-		SC_RemoveObject(state->scene, m->ballList.at(idx));
-		m->ballList.erase(m->ballList.begin() + idx);
-	}
-}
-void RemovePegObject(size_t idx)
-{
-	GameManager* m = GM_GetGameManager();
-	if (idx < m->pegList.size())
-	{
-		GameState* state = GetGameState();
-		SC_RemoveObject(state->scene, m->pegList.at(idx));
-		m->pegList.erase(m->pegList.begin() + idx);
-	}
-}
-void RemovePlayerObject()
-{
-	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	if (m->background)
-	{
-		SC_RemoveObject(state->scene, m->player);
-		m->player = nullptr;
-	}
-}
-void RemoveProjectileObject(size_t idx)
-{
-	GameManager* m = GM_GetGameManager();
-	if (idx < m->projList.size())
-	{
-		GameState* state = GetGameState();
-		SC_RemoveObject(state->scene, m->projList.at(idx));
-		m->projList.erase(m->projList.begin() + idx);
-	}
-}
-void RemoveParticlesBaseObject()
-{
-	GameManager* m = GM_GetGameManager();
-	if (m->particleHandler)
-	{
-		SC_RemoveObject(GetGameState()->scene, m->particleHandler);
-		m->particleHandler = nullptr;
-	}
-}
-void RemoveEnemyObject(uint32_t idx)
-{
-	GameManager* m = GM_GetGameManager();
-	if (idx < m->enemyList.size())
-	{
-		SC_RemoveObject(GetGameState()->scene, m->enemyList.at(idx));
-		m->enemyList.erase(m->enemyList.begin() + idx);
-	}
-}
-void RemoveAllBalls()
-{
-	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	for (uint32_t i = 0; i < m->ballList.size(); i++)
-	{
-		SC_RemoveObject(state->scene, m->ballList.at(i));
-	}
-	m->ballList.clear();
-}
-void RemoveAllPegs()
-{
-	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	for (uint32_t i = 0; i < m->pegList.size(); i++)
-	{
-		SC_RemoveObject(state->scene, m->pegList.at(i));
-	}
-	m->pegList.clear();
-}
-void RemoveAllProjectiles()
-{
-	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	for (uint32_t i = 0; i < m->projList.size(); i++)
-	{
-		SC_RemoveObject(state->scene, m->projList.at(i));
-	}
-	m->projList.clear();
-}
-void RemoveAllEnemyObjects()
-{
-	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	for (uint32_t i = 0; i < m->enemyList.size(); i++)
-	{
-		SC_RemoveObject(state->scene, m->enemyList.at(i));
-	}
-	m->enemyList.clear();
-}
-void RemoveAllObjects()
-{
-	GameManager* m = GM_GetGameManager();
-	GameState* state = GetGameState();
-	SC_RemoveAll(state->scene);
-	m->pegList.clear();
-	m->ballList.clear();
-	m->projList.clear();
-	m->enemyList.clear();
-	m->background = nullptr;
-	m->player = nullptr;
 }

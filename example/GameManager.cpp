@@ -14,11 +14,10 @@ float GM_GetRandomFloat(float start, float end)
 void GameManager::OnAllBallsFell()
 {
 	isAttacksAnimationPlaying = ATTACK_CYCLE_STATES::PLAYER_TURN;
-	Player* p = (Player*)player->entity;
-	p->SetAnimation(Player::ATTACK);
+	player->SetAnimation(Player::ATTACK);
 	
-	AnimatedQuad* q = (AnimatedQuad*)player->renderable;
-	CreateProjectileObject(GetGameState()->scene, q->pos + glm::vec2(0.1f, -0.1f), 0.05f);
+	AnimatedQuad& q = player->quad;
+	projList.push_back(new Projectile(q.pos + glm::vec2(0.1f, -0.1f), 0.05f, SPRITES::DISH_2));
 
 }
 void GameManager::RenderCallback(GameState* state, float dt)
@@ -42,10 +41,7 @@ void GameManager::RenderCallback(GameState* state, float dt)
 	glClearDepthf(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	uint32_t num = 0;
-	SceneObject** obj = SC_GetAllSceneObjects(state->scene, &num);
-
-	RE_RenderScene(state->renderer, viewProj, obj, num);
+	RE_RenderScene(state->renderer, viewProj, state->scene);
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
@@ -60,17 +56,16 @@ void GameManager::RenderCallback(GameState* state, float dt)
 
 	if (background)
 	{
-		Base* b = (Base*)background->entity;
 		const glm::vec2 vpSz = vpEnd - vpStart;
 		glm::vec2 relMouse = { state->mouseX / (float)state->winWidth, state->mouseY / (float)state->winHeight };
 		relMouse = vpStart + vpSz * relMouse;
 		relMouse.y = -relMouse.y;
-		relMouse = glm::normalize(relMouse - b->startPos);
+		relMouse = glm::normalize(relMouse - background->startPos);
 
 		targetDir = relMouse;
 
 
-		std::vector<glm::vec2> list = SimulateBall(b->startPos, targetDir * startVelocity, 0.05f, 1.0f);
+		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 1.0f);
 		if (list.size() > 0)
 		{
 			ImVec2* imList = new ImVec2[list.size()];
@@ -83,8 +78,8 @@ void GameManager::RenderCallback(GameState* state, float dt)
 			delete[] imList;
 		}
 
-		const glm::vec2 winStart = {((float)state->winWidth / vpSz.x) * (b->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (vpEnd.y - b->endBound.y) };
-		const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - b->endBound.x + 0.01f), ((float)state->winHeight / vpSz.y) * (b->endBound.y - vpStart.y + 0.01f) };
+		const glm::vec2 winStart = {((float)state->winWidth / vpSz.x) * (background->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (vpEnd.y - background->endBound.y) };
+		const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - background->endBound.x + 0.01f), ((float)state->winHeight / vpSz.y) * (background->endBound.y - vpStart.y + 0.01f) };
 		
 
 		ImGui::SetNextWindowDockID(0);
@@ -125,28 +120,25 @@ void GameManager::PostUpdate(float dt)
 			b2Body* bB = fixB->GetBody();
 			if (bA && bB)
 			{
-				SceneObject* uA = (SceneObject*)bA->GetUserData().pointer;
-				SceneObject* uB = (SceneObject*)bB->GetUserData().pointer;
-				if (uA && uB && uA->entity && uB->entity)
+				PeggleEntity* uA = (PeggleEntity*)bA->GetUserData().pointer;
+				PeggleEntity* uB = (PeggleEntity*)bB->GetUserData().pointer;
+				if (uA && uB)
 				{
-					PeggleEntity* eA = (PeggleEntity*)uA->entity;
-					PeggleEntity* eB = (PeggleEntity*)uB->entity;
-
 					b2WorldManifold normal;
 					list->GetWorldManifold(&normal);
 					glm::vec2 n = { normal.normal.x, normal.normal.y };
-					if (eA->GetType() == ENTITY_TYPE::BALL && eB->GetType() == ENTITY_TYPE::BALL)
+					if (uA->GetType() == ENTITY_TYPE::BALL && uB->GetType() == ENTITY_TYPE::BALL)
 					{
-						eA->OnCollideWithBall(uB, fixA, n);
-						eB->OnCollideWithBall(uA, fixB, -n);
+						uA->OnCollideWithBall((Ball*)uB, fixA, n);
+						uB->OnCollideWithBall((Ball*)uA, fixB, -n);
 					}
-					else if (eA->GetType() == ENTITY_TYPE::BALL && eB->GetType() != ENTITY_TYPE::BALL)
+					else if (uA->GetType() == ENTITY_TYPE::BALL && uB->GetType() != ENTITY_TYPE::BALL)
 					{
-						eB->OnCollideWithBall(uA, fixB, -n);
+						uB->OnCollideWithBall((Ball*)uA, fixB, -n);
 					}
-					else if (eA->GetType() != ENTITY_TYPE::BALL && eB->GetType() == ENTITY_TYPE::BALL)
+					else if (uA->GetType() != ENTITY_TYPE::BALL && uB->GetType() == ENTITY_TYPE::BALL)
 					{
-						eA->OnCollideWithBall(uB, fixA, n);
+						uA->OnCollideWithBall((Ball*)uB, fixA, n);
 					}
 
 				}
@@ -172,25 +164,24 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS && key == GLFW_KEY_R)
 	{
-		RemoveAllObjects();
-		GM_FillScene();
+		// FREE EVERYTHING
+		// FILL EVERYTHING
+		//GM_FillScene();
 	}
 	if (action == GLFW_PRESS && key == GLFW_KEY_P)
 	{
 		GameManager* m = GM_GetGameManager();
-		if (m->player && m->player->entity)
+		if (m->player)
 		{
-			Player* p = (Player*)m->player->entity;
-			p->SetAnimation(Player::HURT);
+			m->player->SetAnimation(Player::HURT);
 		}
 	}
 	if (action == GLFW_PRESS && key == GLFW_KEY_K)
 	{
 		GameManager* m = GM_GetGameManager();
-		if (m->player && m->player->entity)
+		if (m->player)
 		{
-			Player* p = (Player*)m->player->entity;
-			p->SetAnimation(Player::ATTACK);
+			m->player->SetAnimation(Player::ATTACK);
 		}
 	}
 }
@@ -207,8 +198,8 @@ void GameManager::OnMouseButton(int button, int action, int mods)
 			if (m->ballList.size() == 0)
 			{
 				m->accumulatedDamage = 0;
-				Base* b = (Base*)m->background->entity;
-				SceneObject* obj = CreateBallObject(game->scene, b->startPos, { m->targetDir * m->startVelocity }, 0.05f);
+				Base* b = m->background;
+				m->ballList.push_back(new Ball(b->startPos, m->targetDir * m->startVelocity, 0.05f));
 				isAttacksAnimationPlaying = BALLS_FALLING;
 			}
 		}
@@ -240,33 +231,40 @@ GameManager* GM_GetGameManager()
 
 void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime)
 {
-	ParticlesBase* b = (ParticlesBase*)GM_GetGameManager()->particleHandler->renderable;
-	if (b) b->AddParticle(pos, vel, sizeBegin, sizeEnd, colBegin, colEnd, sprite, rotationBegin, rotationEnd, lifeTime);
+	if (GM_GetGameManager()->particleHandler)
+	{
+		ParticlesBase& b = GM_GetGameManager()->particleHandler->base;
+		b.AddParticle(pos, vel, sizeBegin, sizeEnd, colBegin, colEnd, sprite, rotationBegin, rotationEnd, lifeTime);
+	}
 }
 
 void GM_FillScene()
 {
 	GameState* game = GetGameState();
-	SceneObject* base = CreateBaseObject(game->scene);
-	Base* b = (Base*)base->entity;
-
-	CreateParticlesBaseObject(game->scene);
-
-	CreatePlayerObject(game->scene, { b->entXStart, b->entYStart }, 0.2f);
+	GameManager* m = (GameManager*)game->manager;
 	
-	for (uint32_t i = 1; i < b->numInRow; i++)
+	m->background = new Base(glm::vec2(0.0f, 1.1f), glm::vec2(-1.5f), glm::vec2(1.5f));
+	m->particleHandler = new ParticleHandlerEntity;
+
+	m->player = new Player({ m->background->entXStart, m->background->entYStart }, 0.2f);
+	
+	for (uint32_t i = 1; i < m->background->numInRow; i++)
 	{
-		CreateEnemyObject(game->scene, { b->entXStart + i * b->xSteps, b->entYStart }, 0.2f, CHARACTER_TYPES::SLIME);
+		Character* enemy = CreateEnemy({ m->background->entXStart + i * m->background->xSteps, m->background->entYStart }, 0.2f, CHARACTER_TYPES::SLIME);
+		if (enemy)
+		{
+			m->enemyList.push_back(enemy);
+		}
 	}
 
-	GM_CreateFieldFromCharacters((Base*)base->entity,
+	GM_CreateFieldFromCharacters(m->background,
 		"###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n");
 }
 
 void GM_CreateFieldFromCharacters(Base* b, const char* field)
 {
 	GameState* state = GetGameState();
-
+	GameManager* m = (GameManager*)state->manager;
 	const glm::vec2 playSize = b->endBound - b->startBound - glm::vec2(0.1f, 0.5f);
 
 	float curY = b->endBound.y - 0.8f;
@@ -306,7 +304,7 @@ void GM_CreateFieldFromCharacters(Base* b, const char* field)
 			else
 			{
 				glm::vec2 pos = {b->startBound.x + i * stepX + 0.1f, curY};
-				CreatePegObject(state->scene, pos, 0.05f, GM_GenerateRandomPegType());
+				m->pegList.push_back(new Peg(pos, 0.05f, GM_GenerateRandomPegType()));
 			}
 		}
 		curY -= stepY;

@@ -518,46 +518,47 @@ void RE_CleanUpPostProcessingRenderData(PostProcessingRenderData* data)
 
 
 
-void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, SceneObject** objs, uint32_t numObjs)
+void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, Scene* scene)
 {
-	if (numObjs == 0) return;
-	std::sort(objs, objs + numObjs, [](SceneObject* o1, SceneObject* o2) {
-		if (o1->flags & OBJECT_FLAG_VISIBLE && o1->renderable && o2->renderable) {
-			return o1->renderable->layer < o2->renderable->layer;
+	size_t num = 0;
+	Renderable** renderables =SC_GetAllRenderables(scene, &num);
+	if (num == 0) return;
+	std::sort(renderables, renderables + num, [](Renderable* r1, Renderable* r2) {
+		if (!(r1->GetFlags() & RENDERABLE_FLAGS::INACTIVE) && !(r2->GetFlags() & RENDERABLE_FLAGS::INACTIVE)) {
+			return r1->GetLayer() < r2->GetLayer();
 		}
 		else
 		{
-			return (o2->flags & OBJECT_FLAG_VISIBLE && o2->renderable);
+			return (!(r1->GetFlags() & RENDERABLE_FLAGS::INACTIVE) && (r2->GetFlags() & RENDERABLE_FLAGS::INACTIVE));
 		}
 	});
 
-	renderer->commands.push_back({ 0, 0, objs[0]->renderable->texture});
-	int curLayer = objs[0]->renderable->layer;
+	renderer->commands.push_back({ 0, 0, renderables[0]->GetTexture()});
+	int curLayer = renderables[0]->GetLayer();
 	
-	for (uint32_t i = 0; i < numObjs; i++)
+	for (uint32_t i = 0; i < num; i++)
 	{
-		if (!(objs[i]->flags & OBJECT_FLAG_VISIBLE) || !objs[i]->renderable) break;
-		if (objs[i]->body) objs[i]->renderable->UpdateFromBody(objs[i]->body);
+		if (renderables[i]->GetFlags() & RENDERABLE_FLAGS::INACTIVE) break;
 
 		const uint32_t oldIndSize = renderer->indList.size();
-		if (objs[i]->renderable->layer != curLayer)
+		if (renderables[i]->GetLayer() != curLayer)
 		{
-			renderer->commands.push_back({ oldIndSize, 0, objs[i]->renderable->texture });
+			renderer->commands.push_back({ oldIndSize, 0, renderables[i]->GetTexture()});
 		}
 		DrawCommand* cur = &renderer->commands.at(renderer->commands.size() - 1);
-		if (cur->texture != objs[i]->renderable->texture)
+		if (cur->texture != renderables[i]->GetTexture())
 		{
 			if (cur->texture == -1)
 			{
-				cur->texture = objs[i]->renderable->texture;
+				cur->texture = renderables[i]->GetTexture();
 			}
 			else
 			{
-				renderer->commands.push_back({ oldIndSize, (uint32_t)(renderer->indList.size() - oldIndSize), objs[i]->renderable->texture });
+				renderer->commands.push_back({ oldIndSize, (uint32_t)(renderer->indList.size() - oldIndSize), renderables[i]->GetTexture()});
 				cur = &renderer->commands.at(renderer->commands.size() - 1);
 			}
 		}
-		objs[i]->renderable->AddVertices(renderer->vertexList, renderer->indList);
+		renderables[i]->AddVertices(renderer->vertexList, renderer->indList);
 		cur->numInd += renderer->indList.size() - oldIndSize;
 	}
 

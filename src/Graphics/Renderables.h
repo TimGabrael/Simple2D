@@ -11,21 +11,31 @@ struct Vertex2D
 	uint32_t col;
 };
 
+enum RENDERABLE_FLAGS
+{
+	INACTIVE = 1,
+};
+
 struct Renderable
 {
-	virtual ~Renderable() = default;
-	GLuint texture;
-	int layer = 0;
+	Renderable();
+	virtual ~Renderable();
 	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) = 0;
-	virtual void UpdateFromBody(b2Body* body) = 0;
+	virtual int GetLayer() const = 0;
+	virtual GLuint GetTexture() const = 0;
+	virtual uint32_t GetFlags() const = 0;
 };
 
 struct TextureQuad : public Renderable
 {
 	TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const glm::vec2& uvStart, const glm::vec2& uvEnd, GLuint tex = 0, uint32_t col = 0xFFFFFFFF, int layer = 0);
-	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
-	virtual void UpdateFromBody(b2Body* body) override;
 	virtual ~TextureQuad() = default;
+	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
+	virtual int GetLayer() const;
+	virtual GLuint GetTexture() const;
+	virtual uint32_t GetFlags() const;
+
+	void UpdateFromBody(b2Body* body);
 
 	glm::vec2 pos;
 	glm::vec2 halfSize;
@@ -33,17 +43,22 @@ struct TextureQuad : public Renderable
 	glm::vec2 uvEnd;
 	float angle;
 	uint32_t col;
+	int layer = 0;
+	GLuint texture;
+	uint32_t flags;
 };
 
 struct AnimatedQuad : public Renderable
 {
 	AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, struct AtlasTexture* tex, uint32_t col = 0xFFFFFFFF, int layer = 0);
-
-	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
-	virtual void UpdateFromBody(b2Body* body) override;
-
 	virtual ~AnimatedQuad() = default;
 
+	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
+	virtual int GetLayer() const;
+	virtual GLuint GetTexture() const;
+	virtual uint32_t GetFlags() const;
+
+	void UpdateFromBody(b2Body* body);
 	void AddAnimRange(uint32_t start, uint32_t end);
 
 	struct Range
@@ -58,8 +73,11 @@ struct AnimatedQuad : public Renderable
 	struct AtlasTexture* atlas;
 	float angle;
 	uint32_t col;
+	int layer = 0;
+	GLuint texture;
 	uint32_t animIdx = 0;
-	uint32_t animStepIdx = 0;
+	uint32_t animStepIdx = 0; 
+	uint32_t flags;
 };
 
 
@@ -83,10 +101,9 @@ struct Particle
 struct ParticlesBase : public Renderable
 {
 	ParticlesBase(struct AtlasTexture* atlas, uint32_t numInPool, int layer = INT_MAX);
-
+	~ParticlesBase() = default;
 
 	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
-	virtual void UpdateFromBody(b2Body* body) {}
 
 	void Update(float dt);
 
@@ -96,7 +113,13 @@ struct ParticlesBase : public Renderable
 
 	void AddParticleToVertices(Particle& p, std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds);
 
+	virtual int GetLayer() const;
+	virtual GLuint GetTexture() const;
+	virtual uint32_t GetFlags() const;
+
 	std::vector<Particle> particles;
 	uint32_t curIdx;
 	AtlasTexture* tex;
+	int layer;
+	uint32_t flags;
 };

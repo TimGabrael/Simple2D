@@ -1,6 +1,7 @@
 #pragma once
 #include "GameState.h"
 #include "Audio/AudioManager.h"
+#include "Entitys.h"
 #define PADDING b2_polygonRadius
 
 enum SPRITES
@@ -224,13 +225,14 @@ struct GameManager : public BaseGameManager
 
 	std::vector<WavFile*> audioFiles;
 
-	std::vector<SceneObject*> ballList;
-	std::vector<SceneObject*> pegList;
-	std::vector<SceneObject*> projList;
-	std::vector<SceneObject*> enemyList;
-	SceneObject* background = nullptr;
-	SceneObject* player = nullptr;
-	SceneObject* particleHandler = nullptr;
+	std::vector<Ball*> ballList;
+	std::vector<Peg*> pegList;
+	std::vector<Projectile*> projList;
+	std::vector<Character*> enemyList;
+	Base* background = nullptr;
+	Player* player = nullptr;
+	ParticleHandlerEntity* particleHandler = nullptr;
+
 	glm::vec2 vpStart;
 	glm::vec2 vpEnd;
 	glm::vec2 targetDir;

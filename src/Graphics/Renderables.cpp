@@ -1,7 +1,14 @@
 #include "Renderables.h"
 #include "util/Math.h"
 
-
+Renderable::Renderable()
+{
+	SC_AddRenderable(GetGameState()->scene, this);
+}
+Renderable::~Renderable()
+{
+	SC_RemoveRenderable(GetGameState()->scene, this);
+}
 
 TextureQuad::TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const glm::vec2& uvStart, const glm::vec2& uvEnd, GLuint tex, uint32_t col, int layer)
 {
@@ -13,6 +20,7 @@ TextureQuad::TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const gl
 	this->angle = 0;
 	this->col = col;
 	this->texture = tex;
+	this->flags = 0;
 }
 
 void TextureQuad::AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
@@ -53,6 +61,18 @@ void TextureQuad::UpdateFromBody(b2Body* body)
 	this->pos = { p.x, p.y };
 	this->angle = body->GetAngle();
 }
+int TextureQuad::GetLayer() const
+{
+	return layer;
+}
+GLuint TextureQuad::GetTexture() const
+{
+	return texture;
+}
+uint32_t TextureQuad::GetFlags() const
+{
+	return flags;
+}
 
 
 AnimatedQuad::AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, AtlasTexture* tex, uint32_t col, int layer)
@@ -66,6 +86,7 @@ AnimatedQuad::AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, AtlasT
 	this->texture = tex->texture.uniform;
 	animIdx = 0;
 	animStepIdx = 0;
+	this->flags = 0;
 }
 void AnimatedQuad::AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
 {
@@ -115,6 +136,18 @@ void AnimatedQuad::UpdateFromBody(b2Body* body)
 void AnimatedQuad::AddAnimRange(uint32_t start, uint32_t end)
 {
 	range.push_back({ start, end });
+}
+int AnimatedQuad::GetLayer() const
+{
+	return layer;
+}
+GLuint AnimatedQuad::GetTexture() const
+{
+	return texture;
+}
+uint32_t AnimatedQuad::GetFlags() const
+{
+	return flags;
 }
 
 
@@ -187,7 +220,7 @@ ParticlesBase::ParticlesBase(AtlasTexture* atlas, uint32_t numInPool, int layer)
 	memset(particles.data(), 0, sizeof(Particle));
 	this->layer = layer;
 	this->tex = atlas;
-	this->texture = tex->texture.uniform;
+	this->flags = 0;
 }
 void ParticlesBase::AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
 {
@@ -234,4 +267,16 @@ void ParticlesBase::AddParticle(const glm::vec2& pos, const glm::vec2& vel, cons
 
 		curIdx = (curIdx + 1) % particles.size();
 	}
+}
+int ParticlesBase::GetLayer() const
+{
+	return layer;
+}
+GLuint ParticlesBase::GetTexture() const
+{
+	return tex->texture.uniform;
+}
+uint32_t ParticlesBase::GetFlags() const
+{
+	return flags;
 }
