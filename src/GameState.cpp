@@ -288,7 +288,7 @@ void UpateGameState()
 			glDepthMask(GL_TRUE);
 
 
-			g_gameState->manager->RenderCallback(g_gameState);
+			g_gameState->manager->RenderCallback(g_gameState, dt);
 
 			glfwSwapBuffers(g_gameState->window);
 		}

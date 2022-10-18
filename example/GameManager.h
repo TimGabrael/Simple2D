@@ -198,12 +198,20 @@ enum SOUNDS
 	NUM_SOUNDS,
 };
 
+enum ATTACK_CYCLE_STATES
+{
+	BALLS_FALLING = 0,
+	PLAYER_TURN,
+	ENEMY_TURN,
+	MOVE_TURN,
+	WAIT_FOR_INPUT,
+};
 
 struct GameManager : public BaseGameManager
 {
 	void OnAllBallsFell();
 
-	virtual void RenderCallback(GameState* state) override;
+	virtual void RenderCallback(GameState* state, float dt) override;
 	virtual void Update(float dt) override;
 
 	virtual void PostUpdate(float dt) override;
@@ -231,7 +239,7 @@ struct GameManager : public BaseGameManager
 	AtlasTexture* atlas = nullptr;
 	FontMetrics* metrics = nullptr;
 	uint32_t accumulatedDamage = 0;
-	bool ballsAreFalling = false;
+	ATTACK_CYCLE_STATES isAttacksAnimationPlaying = WAIT_FOR_INPUT;
 };
 
 GameManager* GM_CreateGameManager(GameState* state);

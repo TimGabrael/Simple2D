@@ -29,14 +29,16 @@ struct Base : public PeggleEntity
 	virtual ENTITY_TYPE GetType() const override;
 	virtual void OnCollideWithBall(struct SceneObject* ball, b2Fixture* fixture, const glm::vec2& normal) override;
 
-
-
 	b2Body* left;
 	b2Body* right;
 	b2Body* top;
 	glm::vec2 startPos;
 	glm::vec2 startBound;
 	glm::vec2 endBound;
+	float entXStart;
+	float entYStart;
+	float xSteps;
+	uint32_t numInRow;
 };
 
 struct Ball : public PeggleEntity

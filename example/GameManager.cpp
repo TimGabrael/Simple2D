@@ -13,6 +13,7 @@ float GM_GetRandomFloat(float start, float end)
 
 void GameManager::OnAllBallsFell()
 {
+	isAttacksAnimationPlaying = ATTACK_CYCLE_STATES::PLAYER_TURN;
 	Player* p = (Player*)player->entity;
 	p->SetAnimation(Player::ATTACK);
 	
@@ -20,17 +21,20 @@ void GameManager::OnAllBallsFell()
 	CreateProjectileObject(GetGameState()->scene, q->pos + glm::vec2(0.1f, -0.1f), 0.05f);
 
 }
-void GameManager::RenderCallback(GameState* state)
+void GameManager::RenderCallback(GameState* state, float dt)
 {
-	
-	if (ballsAreFalling)
+	if (isAttacksAnimationPlaying == ATTACK_CYCLE_STATES::ENEMY_TURN)
+	{
+
+	}
+
+	if (isAttacksAnimationPlaying == BALLS_FALLING)
 	{
 		if (ballList.size() == 0)
 		{
 			OnAllBallsFell();
 		}
 	}
-	ballsAreFalling = ballList.size() > 0;
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, state->winWidth, state->winHeight);
@@ -205,6 +209,7 @@ void GameManager::OnMouseButton(int button, int action, int mods)
 				m->accumulatedDamage = 0;
 				Base* b = (Base*)m->background->entity;
 				SceneObject* obj = CreateBallObject(game->scene, b->startPos, { m->targetDir * m->startVelocity }, 0.05f);
+				isAttacksAnimationPlaying = BALLS_FALLING;
 			}
 		}
 	}
@@ -247,8 +252,12 @@ void GM_FillScene()
 
 	CreateParticlesBaseObject(game->scene);
 
-	CreatePlayerObject(game->scene, { b->startBound.x - 0.5f, b->endBound.y + 0.2f }, 0.2f);
-	CreateEnemyObject(game->scene, { b->endBound.x + 0.5f, b->endBound.y + 0.2f }, 0.2f, CHARACTER_TYPES::SLIME);
+	CreatePlayerObject(game->scene, { b->entXStart, b->entYStart }, 0.2f);
+	
+	for (uint32_t i = 1; i < b->numInRow; i++)
+	{
+		CreateEnemyObject(game->scene, { b->entXStart + i * b->xSteps, b->entYStart }, 0.2f, CHARACTER_TYPES::SLIME);
+	}
 
 	GM_CreateFieldFromCharacters((Base*)base->entity,
 		"###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n");

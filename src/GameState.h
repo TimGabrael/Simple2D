@@ -11,7 +11,7 @@
 
 struct BaseGameManager
 {
-	virtual void RenderCallback(struct GameState* state) = 0;
+	virtual void RenderCallback(struct GameState* state, float dt) = 0;
 	virtual void Update(float dt) = 0;
 
 	virtual void PreUpdate(float dt) {};

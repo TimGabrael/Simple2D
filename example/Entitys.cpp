@@ -76,6 +76,10 @@ Base::Base(const glm::vec2& st, const glm::vec2& sbound, const glm::vec2& ebound
 	startPos = st;
 	startBound = sbound;
 	endBound = ebound;
+	entXStart = startBound.x - 0.6f;
+	entYStart = endBound.y + 0.2f;
+	xSteps = 0.45f;
+	numInRow = 10;
 }
 Base::~Base()
 {
@@ -115,7 +119,6 @@ void Base::OnCollideWithBall(struct SceneObject* ball, b2Fixture* fixture, const
 {
 	ball->body->ApplyForceToCenter({ normal.x * 0.2f, normal.y * 0.2f }, true);
 }
-
 
 
 
@@ -641,6 +644,7 @@ SceneObject* CreateEnemyObject(Scene* scene, const glm::vec2& pos, float size, C
 	SceneObject* res = SC_AddObject(scene, &obj);
 	if (c == CHARACTER_TYPES::SLIME)
 	{
+		q->pos.y -= 0.02f;
 		Slime* slime = new Slime;
 		slime->obj = res;
 		res->entity = slime;
