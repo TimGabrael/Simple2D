@@ -135,6 +135,7 @@ struct Character : public Entity
 	};
 	void UpdateAnimation(float dt);
 	void SetAnimation(ANIMATION anim);
+
 	
 	AnimatedQuad quad;
 	float animTimer = 0.0f;

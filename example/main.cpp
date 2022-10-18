@@ -76,7 +76,10 @@ int main()
 
 	{
 		WavFile* clackWav = AU_LoadFile(game->audio, "Assets/clack.wav");
+		WavFile* slimeDieWav = AU_LoadFile(game->audio, "Assets/slime_die.wav");
 		manager->audioFiles.push_back(clackWav);
+		manager->audioFiles.push_back(slimeDieWav);
+
 	}
 	
 	GM_FillScene();

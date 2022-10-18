@@ -196,6 +196,7 @@ enum SPRITES
 enum SOUNDS
 {
 	SOUND_CLACK,
+	SOUND_SLIME_DIE,
 	NUM_SOUNDS,
 };
 
@@ -210,7 +211,6 @@ enum ATTACK_CYCLE_STATES
 
 struct GameManager : public BaseGameManager
 {
-	void OnAllBallsFell();
 
 	virtual void RenderCallback(GameState* state, float dt) override;
 	virtual void Update(float dt) override;
@@ -241,7 +241,9 @@ struct GameManager : public BaseGameManager
 	AtlasTexture* atlas = nullptr;
 	FontMetrics* metrics = nullptr;
 	uint32_t accumulatedDamage = 0;
-	ATTACK_CYCLE_STATES isAttacksAnimationPlaying = WAIT_FOR_INPUT;
+	float waitTimer = 0.0f;
+	int curEnemyInTurn = 0;
+	ATTACK_CYCLE_STATES attackCycleState = WAIT_FOR_INPUT;
 };
 
 GameManager* GM_CreateGameManager(GameState* state);

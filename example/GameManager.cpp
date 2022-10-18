@@ -11,27 +11,83 @@ float GM_GetRandomFloat(float start, float end)
 	return dist(mt);
 }
 
-void GameManager::OnAllBallsFell()
-{
-	isAttacksAnimationPlaying = ATTACK_CYCLE_STATES::PLAYER_TURN;
-	player->SetAnimation(Player::ATTACK);
-	
-	AnimatedQuad& q = player->quad;
-	projList.push_back(new Projectile(q.pos + glm::vec2(0.1f, -0.1f), 0.05f, SPRITES::DISH_2));
 
-}
 void GameManager::RenderCallback(GameState* state, float dt)
 {
-	if (isAttacksAnimationPlaying == ATTACK_CYCLE_STATES::ENEMY_TURN)
+	if (attackCycleState == BALLS_FALLING)
 	{
-
-	}
-
-	if (isAttacksAnimationPlaying == BALLS_FALLING)
-	{
-		if (ballList.size() == 0)
+		if (ballList.empty())
 		{
-			OnAllBallsFell();
+			attackCycleState = ATTACK_CYCLE_STATES::PLAYER_TURN;
+			player->SetAnimation(Player::ATTACK);
+
+			AnimatedQuad& q = player->quad;
+			projList.push_back(new Projectile(q.pos + glm::vec2(0.1f, -0.1f), 0.05f, SPRITES::DISH_2));
+			waitTimer = 0.0f;
+		}
+	}
+	else if (attackCycleState == PLAYER_TURN)
+	{
+		if (projList.empty())
+		{
+			if (waitTimer < 0.04f) waitTimer += dt;
+			else
+			{
+				waitTimer = 0.0f;
+				attackCycleState = ATTACK_CYCLE_STATES::ENEMY_TURN;
+				curEnemyInTurn = 0;
+			}
+		}
+	}
+	else if (attackCycleState == ATTACK_CYCLE_STATES::ENEMY_TURN)
+	{
+		if (curEnemyInTurn < enemyList.size() && curEnemyInTurn >= 0)
+		{
+			Character* curEnemy = enemyList.at(curEnemyInTurn);
+			if (projList.empty() && curEnemy->activeAnimation == Character::IDLE)
+			{
+				if (waitTimer < 0.04f) waitTimer += dt;
+				else 
+				{
+					waitTimer = 0.0f;
+					curEnemyInTurn++;
+				}
+			}
+		}
+		else
+		{
+			curEnemyInTurn = 0;
+			waitTimer = 0.0f;
+			attackCycleState = ATTACK_CYCLE_STATES::MOVE_TURN;
+		}
+	}
+	else if (attackCycleState == ATTACK_CYCLE_STATES::MOVE_TURN)
+	{
+		if (curEnemyInTurn < enemyList.size() && curEnemyInTurn >= 0)
+		{
+			Character* curEnemy = enemyList.at(curEnemyInTurn);
+			const float desiredPos = background->entXStart + (curEnemyInTurn + 1) * background->xSteps;		// +1 as player is on 0
+			if (curEnemy->quad.pos.x <= desiredPos)
+			{
+				curEnemy->SetAnimation(Character::IDLE);
+				//if (waitTimer < 0.04f) waitTimer += dt;
+				//else
+				{
+					waitTimer = 0.0f;
+					curEnemyInTurn++;
+				}
+			}
+			else
+			{
+				curEnemy->SetAnimation(Character::MOVE);
+				curEnemy->quad.pos.x = glm::max(desiredPos, curEnemy->quad.pos.x - 1.0f * dt);
+			}
+		}
+		else
+		{
+			curEnemyInTurn = 0;
+			waitTimer = 0.0f;
+			attackCycleState = ATTACK_CYCLE_STATES::WAIT_FOR_INPUT;
 		}
 	}
 	
@@ -65,7 +121,7 @@ void GameManager::RenderCallback(GameState* state, float dt)
 		targetDir = relMouse;
 
 
-		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 1.0f);
+		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 100.0f);
 		if (list.size() > 0)
 		{
 			ImVec2* imList = new ImVec2[list.size()];
@@ -195,12 +251,12 @@ void GameManager::OnMouseButton(int button, int action, int mods)
 		GameManager* m = GM_GetGameManager();
 		if (button == GLFW_MOUSE_BUTTON_LEFT && m->background)
 		{
-			if (m->ballList.size() == 0)
+			if (attackCycleState == WAIT_FOR_INPUT)
 			{
 				m->accumulatedDamage = 0;
 				Base* b = m->background;
 				m->ballList.push_back(new Ball(b->startPos, m->targetDir * m->startVelocity, 0.05f));
-				isAttacksAnimationPlaying = BALLS_FALLING;
+				attackCycleState = BALLS_FALLING;
 			}
 		}
 	}

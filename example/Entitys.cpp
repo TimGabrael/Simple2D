@@ -385,16 +385,17 @@ void Projectile::UpdateFrame(float dt)
 // RETURN TRUE IF THE PROJECTILE SHOULD CONTINUE TO TRAVEL
 bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 {
-	hit->health = glm::max(hit->health - 10, 0);
+	hit->health = glm::max(hit->health - 100, 0);
 	if (hit->health <= 0)
 	{
+		GM_PlaySound(SOUNDS::SOUND_SLIME_DIE, 1.0f);
 		hit->SetAnimation(Character::DIE);
 	}
 	else
 	{
 		hit->SetAnimation(Character::HURT);
 	}
-	return true;
+	return false;
 }
 
 
@@ -419,7 +420,10 @@ void Character::UpdateAnimation(float dt)
 }
 void Character::SetAnimation(ANIMATION anim)
 {
-	if (anim != IDLE && anim != MOVE)  playAnimOnce = true;
+	if (anim != IDLE && anim != MOVE) {
+		playAnimOnce = true;
+		if (activeAnimation == anim) return;
+	}
 	animIdx = 0;
 	activeAnimation = anim;
 }
