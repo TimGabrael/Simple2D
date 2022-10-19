@@ -11,32 +11,34 @@ float GM_GetRandomFloat(float start, float end)
 	return dist(mt);
 }
 
-
 void GameManager::DrawUi(GameState* state)
 {
 	if (background)
 	{
-		ImDrawList* drawList = ImGui::GetBackgroundDrawList();
 		const glm::vec2 vpSz = vpEnd - vpStart;
 		const glm::vec2 vpToScreen = { (float)state->winWidth / vpSz.x, (float)state->winHeight / -vpSz.y };
-		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 1.0f);
-		if (list.size() > 0)
+		ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+
+		if (!overlayMenuActive)
 		{
-			ImVec2* imList = new ImVec2[list.size()];
-			for (uint32_t i = 0; i < list.size(); i++)
+			std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 1.0f);
+			if (list.size() > 0)
 			{
-				imList[i].x = (list.at(i).x - vpStart.x) * vpToScreen.x;
-				imList[i].y = (list.at(i).y - vpEnd.y)  * vpToScreen.y;
+				ImVec2* imList = new ImVec2[list.size()];
+				for (uint32_t i = 0; i < list.size(); i++)
+				{
+					imList[i].x = (list.at(i).x - vpStart.x) * vpToScreen.x;
+					imList[i].y = (list.at(i).y - vpEnd.y) * vpToScreen.y;
+				}
+				drawList->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
+				delete[] imList;
 			}
-			drawList->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
-			delete[] imList;
-		}
 
-		if (state->tickMultiplier == 0.0f)
-		{
-			drawList->AddText({ 0.0f, 50.0f }, 0xFF0000FF, "PAUSED: PRESS P TO UNPAUSE");
+			if (state->tickMultiplier == 0.0f)
+			{
+				drawList->AddText({ 0.0f, 50.0f }, 0xFF0000FF, "PAUSED: PRESS P TO UNPAUSE");
+			}
 		}
-
 		// LEFT SIDE
 		{
 			const glm::vec2 winStart = { 0.0f, vpToScreen.y * (background->endBound.y - vpEnd.y) };
@@ -109,8 +111,7 @@ void GameManager::DrawUi(GameState* state)
 		}
 	}
 }
-
-void GameManager::RenderCallback(GameState* state, float dt)
+void GameManager::UpdateBattleState(GameState* state, float dt)
 {
 	static bool switchedEnemyInTurn = false;
 	if (attackCycleState == BALLS_FALLING)
@@ -195,7 +196,7 @@ void GameManager::RenderCallback(GameState* state, float dt)
 	}
 
 	// SET TARGET DIRECTION
-	if(background)
+	if (background)
 	{
 		const glm::vec2 vpSz = vpEnd - vpStart;
 		glm::vec2 relMouse = { state->mouseX / (float)state->winWidth, state->mouseY / (float)state->winHeight };
@@ -204,6 +205,98 @@ void GameManager::RenderCallback(GameState* state, float dt)
 		relMouse = glm::normalize(relMouse - background->startPos);
 		targetDir = relMouse;
 	}
+	DrawUi(state);
+}
+
+void GameManager::DrawMenu(GameState* state)
+{
+	
+	ImGui::SetNextWindowPos({ 0.0f,0.0f });
+	ImGui::SetNextWindowSize({ (float)state->winWidth, (float)state->winHeight });
+	
+	ImGui::Begin("MAIN MENU", nullptr,  ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
+
+
+	const float btnWidth = (float)state->winWidth / 4.0f;
+	const float btnHeight = (float)state->winHeight / 10.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.0f, btnHeight / 2.0f });
+
+	ImVec2 btnSize = ImVec2(btnWidth, btnHeight);
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() + btnHeight * 4.0f });
+	if (ImGui::Button("START", btnSize))
+	{
+		this->activeState = GAME_STATE_BATTLE;
+		GM_FillScene();
+	}
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() });
+	if (ImGui::Button("SETTINGS", btnSize))
+	{
+	}
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() });
+	if (ImGui::Button("CREDITS", btnSize))
+	{
+
+	}
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() });
+	if (ImGui::Button("EXIT", btnSize))
+	{
+		glfwSetWindowShouldClose(state->window, 1);
+	}
+
+	ImGui::PopStyleVar(1);
+
+	ImGui::End();
+}
+void GameManager::DrawOverlayMenu(GameState* state)
+{
+	ImGui::SetNextWindowPos({ 0.0f,0.0f });
+	ImGui::SetNextWindowSize({ (float)state->winWidth, (float)state->winHeight });
+
+	ImGui::Begin("MENU", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
+
+	const float btnWidth = (float)state->winWidth / 4.0f;
+	const float btnHeight = (float)state->winHeight / 10.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.0f, btnHeight / 2.0f });
+
+	ImVec2 btnSize = ImVec2(btnWidth, btnHeight);
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() + btnHeight * 4.0f });
+	if (ImGui::Button("CONTINUE", btnSize))
+	{
+		state->tickMultiplier = 1.0f;
+		overlayMenuActive = false;
+	}
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() });
+	if (ImGui::Button("SETTINGS", btnSize))
+	{
+	}
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() });
+	if (ImGui::Button("CREDITS", btnSize))
+	{
+
+	}
+	ImGui::SetCursorPos({ ((float)state->winWidth - btnWidth) / 2.0f, ImGui::GetCursorPosY() });
+	if (ImGui::Button("EXIT", btnSize))
+	{
+		glfwSetWindowShouldClose(state->window, 1);
+	}
+
+	ImGui::PopStyleVar(1);
+
+	ImGui::End();
+}
+
+void GameManager::RenderCallback(GameState* state, float dt)
+{
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+	ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_::ImGuiDockNodeFlags_PassthruCentralNode);
+
+
+	if (this->activeState == GAME_STATE_BATTLE)	UpdateBattleState(state, dt);
+	else if (activeState == GAME_STATE_MAIN_MENU) DrawMenu(state);
+
+	if (this->overlayMenuActive) DrawOverlayMenu(state);
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, state->winWidth, state->winHeight);
@@ -213,17 +306,9 @@ void GameManager::RenderCallback(GameState* state, float dt)
 
 	RE_RenderScene(state->renderer, viewProj, state->scene);
 
-	ImGui_ImplOpenGL3_NewFrame();
-	ImGui_ImplGlfw_NewFrame();
-	ImGui::NewFrame();
-	
-
-	ImGui::DockSpaceOverViewport(nullptr, ImGuiDockNodeFlags_::ImGuiDockNodeFlags_PassthruCentralNode);
 
 	//ImGui::ShowDemoWindow(nullptr);
-
 	//ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
-	DrawUi(state);
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -231,7 +316,7 @@ void GameManager::RenderCallback(GameState* state, float dt)
 
 void GameManager::Update(float dt)
 {
-
+	
 }
 
 void GameManager::PostUpdate(float dt)
@@ -298,8 +383,11 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 	if (action == GLFW_PRESS && key == GLFW_KEY_P)
 	{
 		GameState* s = GetGameState();
-		if (s->tickMultiplier == 0.0f) s->tickMultiplier = 1.0f;
-		else s->tickMultiplier = 0.0f;
+		if (!overlayMenuActive && activeState != GAME_STATE_MAIN_MENU)
+		{
+			if (s->tickMultiplier == 0.0f) s->tickMultiplier = 1.0f;
+			else s->tickMultiplier = 0.0f;
+		}
 
 	}
 	if (action == GLFW_PRESS && key == GLFW_KEY_K)
@@ -308,6 +396,25 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 		if (m->player)
 		{
 			m->player->SetAnimation(Player::ATTACK);
+		}
+	}
+	if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
+	{
+		GameManager* m = GM_GetGameManager();
+		if (m->activeState != GAME_STATE_MAIN_MENU)
+		{
+			if (m->overlayMenuActive)
+			{
+				m->overlayMenuActive = false;
+				GameState* s = GetGameState();
+				s->tickMultiplier = 1.0f;
+			}
+			else
+			{
+				m->overlayMenuActive = true;
+				GameState* s = GetGameState();
+				s->tickMultiplier = 0.0f;
+			}
 		}
 	}
 }
@@ -337,6 +444,8 @@ void GameManager::OnMousePositionChanged(float x, float y, float dx, float dy)
 {
 }
 
+
+
 GameManager* GM_CreateGameManager(GameState* state)
 {
 	GameManager* out = new GameManager;
@@ -346,6 +455,7 @@ GameManager* GM_CreateGameManager(GameState* state)
 	out->viewProj = glm::orthoRH(out->vpStart.x, out->vpEnd.x, out->vpStart.y, out->vpEnd.y, 0.0f, 1.0f);
 
 	out->startVelocity = 8.0f;
+	out->activeState = GAME_STATE_MAIN_MENU;
 	
 	return out;
 }

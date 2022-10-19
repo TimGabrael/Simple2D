@@ -86,8 +86,10 @@ int main()
 
 	}
 	
-	GM_FillScene();
-	
+	if (manager->activeState == GAME_STATE_BATTLE)
+	{
+		GM_FillScene();
+	}
 
 
 

@@ -210,6 +210,13 @@ enum ATTACK_CYCLE_STATES
 	WAIT_FOR_INPUT,
 };
 
+enum GAME_STATES
+{
+	GAME_STATE_MAIN_MENU,
+	GAME_STATE_BATTLE,
+	GAME_STATE_OVERWORLD,
+};
+
 struct PlayerStatInfo
 {
 	float accumulatedDamage = 0;
@@ -219,6 +226,12 @@ struct PlayerStatInfo
 
 struct GameManager : public BaseGameManager
 {
+	void DrawUi(GameState* state);
+	void UpdateBattleState(GameState* state, float dt);
+
+	void DrawMenu(GameState* state);
+	void DrawOverlayMenu(GameState* state);
+
 	virtual void RenderCallback(GameState* state, float dt) override;
 	virtual void Update(float dt) override;
 
@@ -231,7 +244,6 @@ struct GameManager : public BaseGameManager
 	virtual void OnMousePositionChanged(float x, float y, float dx, float dy) override;
 
 
-	void DrawUi(GameState* state);
 
 	std::vector<WavFile*> audioFiles;
 
@@ -256,6 +268,8 @@ struct GameManager : public BaseGameManager
 	float waitTimer = 0.0f;
 	int curEnemyInTurn = 0;
 	ATTACK_CYCLE_STATES attackCycleState = WAIT_FOR_INPUT;
+	GAME_STATES activeState;
+	bool overlayMenuActive = false;
 };
 
 GameManager* GM_CreateGameManager(GameState* state);
