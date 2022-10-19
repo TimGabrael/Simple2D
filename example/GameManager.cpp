@@ -12,6 +12,77 @@ float GM_GetRandomFloat(float start, float end)
 }
 
 
+void GameManager::DrawUi(GameState* state)
+{
+	if (background)
+	{
+		const glm::vec2 vpSz = vpEnd - vpStart;
+		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 100.0f);
+		if (list.size() > 0)
+		{
+			ImVec2* imList = new ImVec2[list.size()];
+			for (uint32_t i = 0; i < list.size(); i++)
+			{
+				imList[i].x = (list.at(i).x - vpStart.x) / (vpEnd.x - vpStart.x) * state->winWidth;
+				imList[i].y = (list.at(i).y - vpEnd.y) / (vpStart.y - vpEnd.y) * state->winHeight;
+			}
+			ImGui::GetBackgroundDrawList()->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
+			delete[] imList;
+		}
+
+		// LEFT SIDE
+		{
+			const glm::vec2 winStart = { 0.0f, ((float)state->winHeight / vpSz.y) * (vpEnd.y - background->endBound.y) };
+			const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (background->startBound.x - vpStart.x) + 1.0f, ((float)state->winHeight / vpSz.y) * (background->endBound.y - vpStart.y) + 1.0f};
+
+			ImGui::SetNextWindowPos({ winStart.x, winStart.y });
+			ImGui::SetNextWindowSize({ winSize.x, winSize.y });
+
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_WindowBg, 0x0);
+
+			ImGui::Begin("PLAYER_INFO", 0, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar);
+			if (player)
+			{
+				ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_PlotHistogram, 0xFF00FF00);
+				ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_FrameBg, 0xFF0000FF);
+				ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_Text, 0xFF000000);
+
+				float hpFraction = (float)player->health / (float)player->maxHealth;
+				std::string hpStr = "Health: " + std::to_string(player->health);
+				ImGui::ProgressBar(hpFraction, ImVec2(-FLT_MIN, 0.0f), hpStr.c_str());
+
+				ImGui::PopStyleColor(3);
+			}
+			ImGui::End();
+
+			ImGui::PopStyleColor();
+
+		}
+
+		// RIGHT SIDE
+		{
+			const glm::vec2 winStart = { ((float)state->winWidth / vpSz.x) * (background->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (vpEnd.y - background->endBound.y) };
+			const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - background->endBound.x) + 1.0f, ((float)state->winHeight / vpSz.y) * (background->endBound.y - vpStart.y) + 1.0f};
+
+
+
+			ImGui::SetNextWindowPos({ winStart.x, winStart.y });
+			ImGui::SetNextWindowSize({ winSize.x, winSize.y });
+
+			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_WindowBg, 0xFF404060);
+
+
+			ImGui::Begin("DATA", 0, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar);
+			ImGui::Text("DAMAGE: %s", std::to_string(accumulatedDamage).c_str());
+			ImGui::End();
+
+			ImGui::PopStyleColor();
+		}
+
+
+	}
+}
+
 void GameManager::RenderCallback(GameState* state, float dt)
 {
 	static bool switchedEnemyInTurn = false;
@@ -95,6 +166,17 @@ void GameManager::RenderCallback(GameState* state, float dt)
 			attackCycleState = ATTACK_CYCLE_STATES::WAIT_FOR_INPUT;
 		}
 	}
+
+	// SET TARGET DIRECTION
+	if(background)
+	{
+		const glm::vec2 vpSz = vpEnd - vpStart;
+		glm::vec2 relMouse = { state->mouseX / (float)state->winWidth, state->mouseY / (float)state->winHeight };
+		relMouse = vpStart + vpSz * relMouse;
+		relMouse.y = -relMouse.y;
+		relMouse = glm::normalize(relMouse - background->startPos);
+		targetDir = relMouse;
+	}
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, state->winWidth, state->winHeight);
@@ -114,49 +196,7 @@ void GameManager::RenderCallback(GameState* state, float dt)
 	//ImGui::ShowDemoWindow(nullptr);
 
 	//ImGui::GetForegroundDrawList()->AddImage((ImTextureID)atlas->texture.uniform, { 100.0f, 100.0f }, { 1000.0f, 1000.0f });
-
-	if (background)
-	{
-		const glm::vec2 vpSz = vpEnd - vpStart;
-		glm::vec2 relMouse = { state->mouseX / (float)state->winWidth, state->mouseY / (float)state->winHeight };
-		relMouse = vpStart + vpSz * relMouse;
-		relMouse.y = -relMouse.y;
-		relMouse = glm::normalize(relMouse - background->startPos);
-
-		targetDir = relMouse;
-
-
-		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 100.0f);
-		if (list.size() > 0)
-		{
-			ImVec2* imList = new ImVec2[list.size()];
-			for (uint32_t i = 0; i < list.size(); i++)
-			{
-				imList[i].x = (list.at(i).x - vpStart.x) / (vpEnd.x - vpStart.x) * state->winWidth;
-				imList[i].y = (list.at(i).y - vpEnd.y) / (vpStart.y - vpEnd.y) * state->winHeight;
-			}
-			ImGui::GetBackgroundDrawList()->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
-			delete[] imList;
-		}
-
-		const glm::vec2 winStart = {((float)state->winWidth / vpSz.x) * (background->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (vpEnd.y - background->endBound.y) };
-		const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - background->endBound.x + 0.01f), ((float)state->winHeight / vpSz.y) * (background->endBound.y - vpStart.y + 0.01f) };
-		
-
-		ImGui::SetNextWindowDockID(0);
-
-		ImGui::SetNextWindowPos({ winStart.x, winStart.y });
-		ImGui::SetNextWindowSize({winSize.x, winSize.y});
-
-		ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_WindowBg, 0xFF404060);
-
-
-		ImGui::Begin("DATA", 0, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar);
-		ImGui::Text("DAMAGE: %s", std::to_string(accumulatedDamage).c_str());
-		ImGui::End();
-
-		ImGui::PopStyleColor();
-	}
+	DrawUi(state);
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -296,6 +336,58 @@ void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2&
 	{
 		ParticlesBase& b = GM_GetGameManager()->particleHandler->base;
 		b.AddParticle(pos, vel, sizeBegin, sizeEnd, colBegin, colEnd, sprite, rotationBegin, rotationEnd, lifeTime);
+	}
+}
+void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& vel, const glm::vec2& velVariation, float sizeBegin, float sizeEnd, uint32_t colBegin, uint32_t colEnd, float lifeTime)
+{
+	GameState* s = GetGameState();
+	GameManager* m = GM_GetGameManager();
+	if (m->particleHandler)
+	{
+		ParticlesBase& b = GM_GetGameManager()->particleHandler->base;
+
+		float pixelSize = 0.0f;
+		const int len = strnlen(text, 1000);
+		const float spaceAdvance = roundf(m->metrics->size * 2.0f / 4.0f * sizeBegin);
+
+		// CALCULATE PIXEL SIZE OF THE TEXT
+		for (int i = 0; i < len; i++)
+		{
+			char c = text[i];
+			if (c == ' ') { pixelSize += spaceAdvance; continue; }
+			uint32_t idx = c - m->metrics->firstCharacter;
+			if (idx < m->metrics->numGlyphs)
+			{
+				Glyph& g = m->metrics->glyphs[idx];
+				pixelSize += g.advance * sizeBegin;
+			}
+		}
+		
+		const float pixelToVP = (m->vpEnd.x - m->vpStart.x) / s->winWidth;
+
+		float vpSizeX = pixelSize * pixelToVP;
+
+		glm::vec2 curPos = glm::vec2(center.x - vpSizeX / 2.0f, center.y);
+
+		// ADD THE GLYPHS TO THE PARTICLE SYSTEM
+		for (int i = 0; i < len; i++)
+		{
+			char c = text[i];
+			if (c == ' ') { curPos.x += spaceAdvance * pixelToVP * sizeBegin; continue; }
+			uint32_t idx = c - m->metrics->firstCharacter;
+			if (idx < m->metrics->numGlyphs)
+			{
+				Glyph& g = m->metrics->glyphs[idx];
+				curPos.x += g.advance * pixelToVP * sizeBegin;
+				
+				glm::vec2 realSizeBegin = {g.width * pixelToVP * sizeBegin, g.height * pixelToVP * sizeBegin};
+				glm::vec2 realSizeEnd = { g.width * pixelToVP * sizeEnd, g.height * pixelToVP * sizeEnd };
+
+				b.AddParticle(curPos, vel + GM_GetRandomFloat(-1.0f, 1.0f) * velVariation, realSizeBegin, realSizeEnd, colBegin, colEnd, idx + m->metrics->atlasIdx, 0.0f, 0.0f, lifeTime);
+			}
+		}
+
+
 	}
 }
 

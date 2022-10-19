@@ -11,6 +11,8 @@ int main()
 	GameManager* manager = GM_CreateGameManager(game);
 	game->manager = manager;
 
+	ImGui::GetIO().Fonts->AddFontFromFileTTF("Assets/consola.ttf", 24.0f);
+		
 	{
 		AtlasBuildData* build = AM_BeginAtlasTexture();
 		{
@@ -70,7 +72,7 @@ int main()
 				AM_AtlasAddFromFile(build, f.c_str());
 			}
 		}
-		AM_AtlasAddGlyphRangeFromFile(build, "Assets/consola.ttf", 'A', 'z' + 1, 20.0f);
+		manager->metrics = AM_AtlasAddGlyphRangeFromFile(build, "Assets/consola.ttf", '0', 'z' + 1, 20.0f);
 		manager->atlas = AM_EndTextureAtlas(build, false);
 	}
 

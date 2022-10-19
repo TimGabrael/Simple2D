@@ -145,6 +145,7 @@ struct Character : public Entity
 	float animTimer = 0.0f;
 	uint32_t animIdx = 0;
 	int health = 100;
+	int maxHealth = 100;
 	uint32_t activeAnimation = 0;
 	bool playAnimOnce = false;
 };

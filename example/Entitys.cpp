@@ -1,5 +1,6 @@
 #include "Entitys.h"
 #include "GameManager.h"
+#include <string>
 
 static constexpr SPRITES sprites[ENTITY_TYPE::NUM_ENTITYS] = {
 		SPRITES::DISH_2, SPRITES::DISH_2,
@@ -311,6 +312,10 @@ void Peg::OnCollideWithBall(Ball* ball, b2Fixture* fixture, const glm::vec2& nor
 		GM_AddParticle({ pos.x, pos.y }, glm::vec2(0.0f), glm::vec2(quad.halfSize), glm::vec2(quad.halfSize * 2.0f), 0xFFFFFFFF, 0x60FFFFFF, SPRITES::PIZZA, 0.0f, 0.0f, 0.2f);
 		
 		GM_PlaySound(SOUNDS::SOUND_CLACK, 1.0f);
+
+		std::string dmgString = std::to_string(m->accumulatedDamage);
+		GM_AddTextParticle(dmgString.c_str(), glm::vec2(pos.x, pos.y + 0.05f), glm::vec2(0.0f, 0.3f), glm::vec2(0.0f, 0.0f), 1.0f, 0.5f, 0xFFFFFFFF, 0xA0FFFFFF, 0.4f);
+
 	}
 	else
 	{
@@ -386,7 +391,7 @@ void Projectile::UpdateFrame(float dt)
 // RETURN TRUE IF THE PROJECTILE SHOULD CONTINUE TO TRAVEL
 bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 {
-	hit->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_SLIME_DIE, 100);
+	hit->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_SLIME_DIE, GM_GetGameManager()->accumulatedDamage);
 	return false;
 }
 
@@ -554,14 +559,15 @@ void Slime::BeginAction()
 	float desiredStep = 0.0f;
 	if (ahead)
 	{
-		float finalPos = ahead->quad.pos.x + ahead->quad.halfSize.x;
+		float finalPos = ahead->quad.pos.x + ahead->quad.halfSize.x + quad.halfSize.x;
 		desiredStep = glm::min(m->background->xSteps, quad.pos.x - finalPos);
 		canAttack = false;
 	}
 	else
 	{
-		float finalPos = m->background->entXStart + m->player->quad.halfSize.x;
+		float finalPos = m->background->entXStart + m->player->quad.halfSize.x + quad.halfSize.x;
 		desiredStep = glm::min(m->background->xSteps, quad.pos.x - finalPos);
+
 		canAttack = true;
 	}
 	targetXPos = quad.pos.x - desiredStep;

@@ -212,7 +212,6 @@ enum ATTACK_CYCLE_STATES
 
 struct GameManager : public BaseGameManager
 {
-
 	virtual void RenderCallback(GameState* state, float dt) override;
 	virtual void Update(float dt) override;
 
@@ -223,6 +222,9 @@ struct GameManager : public BaseGameManager
 	virtual void OnKey(int key, int scancode, int action, int mods) override;
 	virtual void OnMouseButton(int button, int action, int mods) override;
 	virtual void OnMousePositionChanged(float x, float y, float dx, float dy) override;
+
+
+	void DrawUi(GameState* state);
 
 	std::vector<WavFile*> audioFiles;
 
@@ -258,6 +260,7 @@ float GM_GetRandomFloat(float start, float end);
 
 
 void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime);
+void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& vel, const glm::vec2& velVariation, float sizeBegin, float sizeEnd, uint32_t colBegin, uint32_t colEnd, float lifeTime);
 
 void GM_FillScene();
 
