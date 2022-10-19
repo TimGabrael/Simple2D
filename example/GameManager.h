@@ -210,6 +210,13 @@ enum ATTACK_CYCLE_STATES
 	WAIT_FOR_INPUT,
 };
 
+struct PlayerStatInfo
+{
+	float accumulatedDamage = 0;
+	float critMultiplier = 1.0f;
+	float maxCritMultiplier = 2.0f;
+};
+
 struct GameManager : public BaseGameManager
 {
 	virtual void RenderCallback(GameState* state, float dt) override;
@@ -245,7 +252,7 @@ struct GameManager : public BaseGameManager
 	glm::mat4 viewProj;
 	AtlasTexture* atlas = nullptr;
 	FontMetrics* metrics = nullptr;
-	uint32_t accumulatedDamage = 0;
+	PlayerStatInfo stats;
 	float waitTimer = 0.0f;
 	int curEnemyInTurn = 0;
 	ATTACK_CYCLE_STATES attackCycleState = WAIT_FOR_INPUT;
@@ -262,6 +269,7 @@ float GM_GetRandomFloat(float start, float end);
 void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime);
 void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& vel, const glm::vec2& velVariation, float sizeBegin, float sizeEnd, uint32_t colBegin, uint32_t colEnd, float lifeTime);
 
+void GM_ClearScene();
 void GM_FillScene();
 
 void GM_CreateFieldFromCharacters(struct Base* b, const char* field);

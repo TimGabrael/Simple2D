@@ -4,7 +4,7 @@
 
 static constexpr SPRITES sprites[ENTITY_TYPE::NUM_ENTITYS] = {
 		SPRITES::DISH_2, SPRITES::DISH_2,
-		SPRITES::PIZZA, SPRITES::BURGER,
+		SPRITES::PIZZA, SPRITES::BURGER, SPRITES::DONUT,
 };
 
 
@@ -288,11 +288,11 @@ void Peg::OnCollideWithBall(Ball* ball, b2Fixture* fixture, const glm::vec2& nor
 		switch (type)
 		{
 		case STANDARD_PEG:
-			m->accumulatedDamage += 1;
+			m->stats.accumulatedDamage += 1.0f * m->stats.critMultiplier;
 			SetInactive();
 			break;
 		case REFRESH_PEG:
-			m->accumulatedDamage += 1;
+			m->stats.accumulatedDamage += 1.0f * m->stats.critMultiplier;
 			SetInactive();
 			for (uint32_t i = 0; i < m->pegList.size(); i++)
 			{
@@ -304,6 +304,15 @@ void Peg::OnCollideWithBall(Ball* ball, b2Fixture* fixture, const glm::vec2& nor
 				}
 			}
 			break;
+		case CRIT_PEG:
+		{
+			SetInactive();
+			float oldCritMultiplier = m->stats.critMultiplier;
+			m->stats.critMultiplier = std::min(m->stats.critMultiplier + 1.0f, m->stats.maxCritMultiplier);
+			float diffMultiplier = m->stats.critMultiplier - oldCritMultiplier;
+			m->stats.accumulatedDamage += m->stats.accumulatedDamage * diffMultiplier;
+			break;
+		}
 		default:
 			break;
 		};
@@ -311,10 +320,15 @@ void Peg::OnCollideWithBall(Ball* ball, b2Fixture* fixture, const glm::vec2& nor
 		b2Vec2 pos = body->GetPosition();
 		GM_AddParticle({ pos.x, pos.y }, glm::vec2(0.0f), glm::vec2(quad.halfSize), glm::vec2(quad.halfSize * 2.0f), 0xFFFFFFFF, 0x60FFFFFF, SPRITES::PIZZA, 0.0f, 0.0f, 0.2f);
 		
-		GM_PlaySound(SOUNDS::SOUND_CLACK, 1.0f);
+		GM_PlaySound(SOUNDS::SOUND_CLACK, 0.2f);
 
-		std::string dmgString = std::to_string(m->accumulatedDamage);
-		GM_AddTextParticle(dmgString.c_str(), glm::vec2(pos.x, pos.y + 0.05f), glm::vec2(0.0f, 0.3f), glm::vec2(0.0f, 0.0f), 1.0f, 0.5f, 0xFFFFFFFF, 0xA0FFFFFF, 0.4f);
+		uint32_t textColor = 0xFFFFFF;
+		if (m->stats.critMultiplier > 1.0f)
+		{
+			textColor = 0x00d7FF;
+		}
+		std::string dmgString = std::to_string((int)m->stats.accumulatedDamage);
+		GM_AddTextParticle(dmgString.c_str(), glm::vec2(pos.x, pos.y + 0.05f), glm::vec2(0.0f, 0.3f), glm::vec2(0.0f, 0.0f), 1.0f, 0.5f, textColor | (0xFF << 24), textColor | (0xA0 << 24), 0.4f);
 
 	}
 	else
@@ -391,7 +405,7 @@ void Projectile::UpdateFrame(float dt)
 // RETURN TRUE IF THE PROJECTILE SHOULD CONTINUE TO TRAVEL
 bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 {
-	hit->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_SLIME_DIE, GM_GetGameManager()->accumulatedDamage);
+	hit->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_SLIME_DIE, GM_GetGameManager()->stats.accumulatedDamage);
 	return false;
 }
 
@@ -570,7 +584,8 @@ void Slime::BeginAction()
 
 		canAttack = true;
 	}
-	targetXPos = quad.pos.x - desiredStep;
+	if (desiredStep < 0.001f) targetXPos = 100000.0f;
+	else targetXPos = quad.pos.x - desiredStep;
 }
 bool Slime::PerformAction(float dt)
 {
@@ -581,6 +596,7 @@ bool Slime::PerformAction(float dt)
 	}
 	if (targetXPos < 1000.0f)
 	{
+		canAttack = false;
 		SetAnimation(Character::MOVE);
 		quad.pos.x = quad.pos.x - 1.0f * dt;
 		if (quad.pos.x <= targetXPos)

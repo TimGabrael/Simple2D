@@ -16,24 +16,26 @@ void GameManager::DrawUi(GameState* state)
 {
 	if (background)
 	{
+		ImDrawList* drawList = ImGui::GetBackgroundDrawList();
 		const glm::vec2 vpSz = vpEnd - vpStart;
-		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 100.0f);
+		const glm::vec2 vpToScreen = { (float)state->winWidth / vpSz.x, (float)state->winHeight / -vpSz.y };
+		std::vector<glm::vec2> list = SimulateBall(background->startPos, targetDir * startVelocity, 0.05f, 1.0f);
 		if (list.size() > 0)
 		{
 			ImVec2* imList = new ImVec2[list.size()];
 			for (uint32_t i = 0; i < list.size(); i++)
 			{
-				imList[i].x = (list.at(i).x - vpStart.x) / (vpEnd.x - vpStart.x) * state->winWidth;
-				imList[i].y = (list.at(i).y - vpEnd.y) / (vpStart.y - vpEnd.y) * state->winHeight;
+				imList[i].x = (list.at(i).x - vpStart.x) * vpToScreen.x;
+				imList[i].y = (list.at(i).y - vpEnd.y)  * vpToScreen.y;
 			}
-			ImGui::GetBackgroundDrawList()->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
+			drawList->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
 			delete[] imList;
 		}
 
 		// LEFT SIDE
 		{
-			const glm::vec2 winStart = { 0.0f, ((float)state->winHeight / vpSz.y) * (vpEnd.y - background->endBound.y) };
-			const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (background->startBound.x - vpStart.x) + 1.0f, ((float)state->winHeight / vpSz.y) * (background->endBound.y - vpStart.y) + 1.0f};
+			const glm::vec2 winStart = { 0.0f, vpToScreen.y * (background->endBound.y - vpEnd.y) };
+			const glm::vec2 winSize = { vpToScreen.x * (background->startBound.x - vpStart.x) + 1.0f, vpToScreen.y * (vpStart.y - background->endBound.y) + 1.0f};
 
 			ImGui::SetNextWindowPos({ winStart.x, winStart.y });
 			ImGui::SetNextWindowSize({ winSize.x, winSize.y });
@@ -41,6 +43,7 @@ void GameManager::DrawUi(GameState* state)
 			ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_WindowBg, 0x0);
 
 			ImGui::Begin("PLAYER_INFO", 0, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar);
+			ImGui::Spacing();ImGui::Spacing();ImGui::Spacing();ImGui::Spacing();
 			if (player)
 			{
 				ImGui::PushStyleColor(ImGuiCol_::ImGuiCol_PlotHistogram, 0xFF00FF00);
@@ -56,13 +59,33 @@ void GameManager::DrawUi(GameState* state)
 			ImGui::End();
 
 			ImGui::PopStyleColor();
-
 		}
+
+
+		// DRAW ENEMY HEALTH BARS
+		for (uint32_t i = 0; i < enemyList.size(); i++)
+		{
+			const glm::vec2& pos = enemyList.at(i)->quad.pos;
+			const glm::vec2& sz = enemyList.at(i)->quad.halfSize;
+
+			const float ratio = (float)enemyList.at(i)->health / (float)enemyList.at(i)->maxHealth;
+
+			ImVec2 start = { (pos.x - sz.x - vpStart.x + 0.05f) * vpToScreen.x, vpToScreen.y * (pos.y - vpEnd.y + sz.y) };
+			ImVec2 end = { (pos.x + sz.x - vpStart.x - 0.05f) * vpToScreen.x, vpToScreen.y * (pos.y - vpEnd.y + sz.y) + 10.0f};
+
+
+			drawList->AddRectFilled(start, end, 0xFF0000FF);
+
+			end.x = (end.x - start.x) * ratio + start.x;
+
+			drawList->AddRectFilled(start, end, 0xFF00FF00);
+		}
+
 
 		// RIGHT SIDE
 		{
-			const glm::vec2 winStart = { ((float)state->winWidth / vpSz.x) * (background->endBound.x - vpStart.x), ((float)state->winHeight / vpSz.y) * (vpEnd.y - background->endBound.y) };
-			const glm::vec2 winSize = { ((float)state->winWidth / vpSz.x) * (vpEnd.x - background->endBound.x) + 1.0f, ((float)state->winHeight / vpSz.y) * (background->endBound.y - vpStart.y) + 1.0f};
+			const glm::vec2 winStart = { vpToScreen.x * (background->endBound.x - vpStart.x), vpToScreen.y * (background->endBound.y - vpEnd.y) };
+			const glm::vec2 winSize = { vpToScreen.x * (vpEnd.x - background->endBound.x) + 1.0f, vpToScreen.y * (vpStart.y - background->endBound.y) + 1.0f};
 
 
 
@@ -73,13 +96,12 @@ void GameManager::DrawUi(GameState* state)
 
 
 			ImGui::Begin("DATA", 0, ImGuiWindowFlags_::ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar);
-			ImGui::Text("DAMAGE: %s", std::to_string(accumulatedDamage).c_str());
+			ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+			ImGui::Text("DAMAGE: %d", (int)stats.accumulatedDamage);
 			ImGui::End();
 
 			ImGui::PopStyleColor();
 		}
-
-
 	}
 }
 
@@ -94,7 +116,7 @@ void GameManager::RenderCallback(GameState* state, float dt)
 			player->SetAnimation(Player::ATTACK);
 
 			AnimatedQuad& q = player->quad;
-			projList.push_back(new Projectile(q.pos + glm::vec2(0.1f, -0.1f), 0.05f, SPRITES::DISH_2));
+			projList.push_back(new Projectile(q.pos + glm::vec2(0.0f, -0.1f), 0.1f, SPRITES::DISH_2));
 			waitTimer = 0.0f;
 		}
 	}
@@ -265,9 +287,8 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS && key == GLFW_KEY_R)
 	{
-		// FREE EVERYTHING
-		// FILL EVERYTHING
-		//GM_FillScene();
+		GM_ClearScene();
+		GM_FillScene();
 	}
 	if (action == GLFW_PRESS && key == GLFW_KEY_P)
 	{
@@ -298,7 +319,8 @@ void GameManager::OnMouseButton(int button, int action, int mods)
 		{
 			if (attackCycleState == WAIT_FOR_INPUT)
 			{
-				m->accumulatedDamage = 0;
+				m->stats.accumulatedDamage = 0.0f;
+				m->stats.critMultiplier = 1.0f;
 				Base* b = m->background;
 				m->ballList.push_back(new Ball(b->startPos, m->targetDir * m->startVelocity, 0.05f));
 				attackCycleState = BALLS_FALLING;
@@ -373,7 +395,7 @@ void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& ve
 		for (int i = 0; i < len; i++)
 		{
 			char c = text[i];
-			if (c == ' ') { curPos.x += spaceAdvance * pixelToVP * sizeBegin; continue; }
+			if (c == ' ') { curPos.x += spaceAdvance * pixelToVP; continue; }
 			uint32_t idx = c - m->metrics->firstCharacter;
 			if (idx < m->metrics->numGlyphs)
 			{
@@ -391,12 +413,53 @@ void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& ve
 	}
 }
 
+
+void GM_ClearScene()
+{
+	GameState* game = GetGameState();
+	GameManager* m = (GameManager*)game->manager;
+	m->waitTimer = 0.0f;
+	m->attackCycleState = ATTACK_CYCLE_STATES::WAIT_FOR_INPUT;
+
+	m->stats.accumulatedDamage = 0.0f;
+	m->stats.critMultiplier = 1.0f;
+
+	for (Ball* b : m->ballList)
+	{
+		delete b;
+	}
+	for (Projectile* p : m->projList)
+	{
+		delete p;
+	}
+
+	for (Peg* p : m->pegList)
+	{
+		delete p;
+	}
+	for (Character* c : m->enemyList)
+	{
+		delete c;
+	}
+	delete m->player;
+	delete m->particleHandler;
+	delete m->background;
+
+	m->enemyActionList.clear();
+	m->ballList.clear();
+	m->projList.clear();
+	m->pegList.clear();
+	m->enemyList.clear();
+	m->player = nullptr;
+	m->particleHandler = nullptr;
+	m->background = nullptr;
+}
 void GM_FillScene()
 {
 	GameState* game = GetGameState();
 	GameManager* m = (GameManager*)game->manager;
 	
-	m->background = new Base(glm::vec2(0.0f, 1.1f), glm::vec2(-1.5f), glm::vec2(1.5f));
+	m->background = new Base(glm::vec2(0.0f, 1.0f), glm::vec2(-2.0f, -1.5f), glm::vec2(2.0f, 1.2f));
 	m->particleHandler = new ParticleHandlerEntity;
 
 	m->player = new Player({ m->background->entXStart, m->background->entYStart }, 0.2f);
@@ -411,7 +474,26 @@ void GM_FillScene()
 	}
 
 	GM_CreateFieldFromCharacters(m->background,
-		"###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n###   ###   ###\n   ###   ###   \n");
+		"###   ###   ######   ###   ######   ###   ######   ###   ###\
+		\n   ###   ###   ###   ###   ###   ###   ###   ###   ###   ###\
+		\n###   ###   ############   ######   ###   ######   ###   ###\
+		\n   ###   ###   #########   ###   ###   ###   ###   ###   ###\
+		\n###   ###   #####################   ###   ######   ###   ###\
+		\n   ###   ###   ###############   ###   ###   ###   ###   ###\
+		\n###   ###   #####################   ###   ######   ###   ###\
+		\n   ###   ###   ###############   ###   ###   ###   ###   ###\
+		\n###   ###   #####################   ###   ######   ###   ###\
+		\n   ###   ###   ###############   ###   ###   ###   ###   ###\
+		\n###   ###   #####################   ###   ######   ###   ###\
+		\n   ###   ###   ###############   ###   ###   ###   ###   ###\
+		\n###   ###   #####################   ###   ######   ###   ###\
+		\n   ###   ###   ###   ###   ###   ###   ###   ###   ###   ###\
+		\n###   ###   ######   ###   ######   ###   ######   ###   ###\
+		\n   ###   ###   ###   ###   ###   ###   ###   ###   ###   ###\
+		\n###   ###   ######   ###   ######   ###   ######   ###   ###\
+		\n   ###   ###   ###   ###   ###   ###   ###   ###   ###   ###\
+		\n###   ###   ######   ###   ######   ###   ######   ###   ###\
+		\n   ###   ###   ###   ###   ###   ###   ###   ###   ###   ###\n");
 }
 
 void GM_CreateFieldFromCharacters(Base* b, const char* field)
@@ -468,8 +550,9 @@ void GM_CreateFieldFromCharacters(Base* b, const char* field)
 ENTITY_TYPE GM_GenerateRandomPegType()
 {
 	const float rd = GM_GetRandomFloat(0.0f, 1.0f);
-	if (rd < 0.95f) return ENTITY_TYPE::STANDARD_PEG;
-	else return ENTITY_TYPE::REFRESH_PEG;
+	if (rd < 0.93f) return ENTITY_TYPE::STANDARD_PEG;
+	else if (rd < 0.97f) return ENTITY_TYPE::REFRESH_PEG;
+	else return ENTITY_TYPE::CRIT_PEG;
 }
 
 void GM_PlaySound(SOUNDS sound, float volume)
