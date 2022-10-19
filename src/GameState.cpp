@@ -131,6 +131,7 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	g_gameState->mouseX = 0;
 	g_gameState->mouseY = 0;
 	g_gameState->accumulatedTime = 0.0f;
+	g_gameState->tickMultiplier = 1.0f;
 
 	glfwMakeContextCurrent(window);
 	glfwSetWindowAspectRatio(window, 16, 9);
@@ -268,7 +269,7 @@ void UpateGameState()
 		static double timer = glfwGetTime();
 		double curTime = glfwGetTime();
 
-		float dt = curTime - timer;
+		float dt = (curTime - timer) * g_gameState->tickMultiplier;
 		timer = curTime;
 		g_gameState->accumulatedTime += dt;
 

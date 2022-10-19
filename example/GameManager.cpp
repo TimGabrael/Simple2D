@@ -32,6 +32,11 @@ void GameManager::DrawUi(GameState* state)
 			delete[] imList;
 		}
 
+		if (state->tickMultiplier == 0.0f)
+		{
+			drawList->AddText({ 0.0f, 50.0f }, 0xFF0000FF, "PAUSED: PRESS P TO UNPAUSE");
+		}
+
 		// LEFT SIDE
 		{
 			const glm::vec2 winStart = { 0.0f, vpToScreen.y * (background->endBound.y - vpEnd.y) };
@@ -292,11 +297,10 @@ void GameManager::OnKey(int key, int scancode, int action, int mods)
 	}
 	if (action == GLFW_PRESS && key == GLFW_KEY_P)
 	{
-		GameManager* m = GM_GetGameManager();
-		if (m->player)
-		{
-			m->player->SetAnimation(Player::HURT);
-		}
+		GameState* s = GetGameState();
+		if (s->tickMultiplier == 0.0f) s->tickMultiplier = 1.0f;
+		else s->tickMultiplier = 0.0f;
+
 	}
 	if (action == GLFW_PRESS && key == GLFW_KEY_K)
 	{
