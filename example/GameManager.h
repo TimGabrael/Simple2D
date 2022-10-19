@@ -197,6 +197,8 @@ enum SOUNDS
 {
 	SOUND_CLACK,
 	SOUND_SLIME_DIE,
+	SOUND_SLIME_ATTACK,
+	SOUND_NONE,
 	NUM_SOUNDS,
 };
 
@@ -205,7 +207,6 @@ enum ATTACK_CYCLE_STATES
 	BALLS_FALLING = 0,
 	PLAYER_TURN,
 	ENEMY_TURN,
-	MOVE_TURN,
 	WAIT_FOR_INPUT,
 };
 
@@ -229,9 +230,11 @@ struct GameManager : public BaseGameManager
 	std::vector<Peg*> pegList;
 	std::vector<Projectile*> projList;
 	std::vector<Character*> enemyList;
+	std::vector<Character*> enemyActionList;
 	Base* background = nullptr;
 	Player* player = nullptr;
 	ParticleHandlerEntity* particleHandler = nullptr;
+
 
 	glm::vec2 vpStart;
 	glm::vec2 vpEnd;

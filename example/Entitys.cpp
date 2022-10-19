@@ -227,6 +227,7 @@ void Ball::OnCollideWithBall(struct Ball* ball, b2Fixture* fixture, const glm::v
 }
 void Ball::UpdateFrame(float dt) 
 {
+	GM_AddParticle(quad.pos, glm::vec2(0.0f), quad.halfSize, quad.halfSize * 0.1f, 0xFFFFFFFF, 0xFFFFFFFF, SPRITES::DISH_2, 0.0f, 0.0f, 0.1f);
 	quad.UpdateFromBody(body);
 }
 
@@ -385,16 +386,7 @@ void Projectile::UpdateFrame(float dt)
 // RETURN TRUE IF THE PROJECTILE SHOULD CONTINUE TO TRAVEL
 bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 {
-	hit->health = glm::max(hit->health - 100, 0);
-	if (hit->health <= 0)
-	{
-		GM_PlaySound(SOUNDS::SOUND_SLIME_DIE, 1.0f);
-		hit->SetAnimation(Character::DIE);
-	}
-	else
-	{
-		hit->SetAnimation(Character::HURT);
-	}
+	hit->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_SLIME_DIE, 100);
 	return false;
 }
 
@@ -420,12 +412,27 @@ void Character::UpdateAnimation(float dt)
 }
 void Character::SetAnimation(ANIMATION anim)
 {
+	playAnimOnce = false;
 	if (anim != IDLE && anim != MOVE) {
 		playAnimOnce = true;
 		if (activeAnimation == anim) return;
 	}
 	animIdx = 0;
 	activeAnimation = anim;
+}
+void Character::ApplyDamage(enum SOUNDS hurt, enum SOUNDS die, int dmg)
+{
+	health = glm::max(health - dmg, 0);
+	if (health <= 0)
+	{
+		GM_PlaySound(die, 1.0f);
+		SetAnimation(DIE);
+	}
+	else
+	{
+		GM_PlaySound(hurt, 1.0f);
+		SetAnimation(HURT);
+	}
 }
 Player::Player(const glm::vec2& pos, float size) : Character(pos, size)
 {
@@ -462,6 +469,14 @@ void Player::UpdateFrame(float dt)
 	}
 	
 }
+void Player::BeginAction()
+{
+
+}
+bool Player::PerformAction(float dt)
+{
+	return true;
+}
 
 Slime::Slime(const glm::vec2& pos, float size) : Character(pos, size)
 {
@@ -477,6 +492,7 @@ Slime::~Slime()
 }
 void Slime::UpdateFrame(float dt)
 {
+	uint32_t prevAnimIdx = animIdx;
 	UpdateAnimation(dt);
 
 	quad.animIdx = activeAnimation;
@@ -485,6 +501,13 @@ void Slime::UpdateFrame(float dt)
 		uint32_t oldAnimIdx = animIdx;
 		auto range = quad.range.at(activeAnimation);
 		animIdx = (animIdx % (range.endIdx - range.startIdx));
+		if (activeAnimation == ATTACK)
+		{
+			if (animIdx <= 2 && oldAnimIdx >= 3)
+			{
+				GM_GetGameManager()->player->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_NONE, 10);
+			}
+		}
 		if (animIdx < oldAnimIdx)
 		{
 			if (playAnimOnce)
@@ -510,6 +533,74 @@ void Slime::UpdateFrame(float dt)
 	}
 	
 }
+void Slime::BeginAction()
+{
+	GameManager* m = GM_GetGameManager();
+
+	float curMinAhead = FLT_MAX;
+	Character* ahead = nullptr;
+	for (uint32_t i = 0; i < m->enemyList.size(); i++)
+	{
+		if (m->enemyList.at(i) == this) continue;
+		const glm::vec2 otherPos = m->enemyList.at(i)->quad.pos;
+		const float dist = (quad.pos.x - otherPos.x);
+
+		if (dist > 0.0f && dist < curMinAhead)
+		{
+			curMinAhead = dist;
+			ahead = m->enemyList.at(i);
+		}
+	}
+	float desiredStep = 0.0f;
+	if (ahead)
+	{
+		float finalPos = ahead->quad.pos.x + ahead->quad.halfSize.x;
+		desiredStep = glm::min(m->background->xSteps, quad.pos.x - finalPos);
+		canAttack = false;
+	}
+	else
+	{
+		float finalPos = m->background->entXStart + m->player->quad.halfSize.x;
+		desiredStep = glm::min(m->background->xSteps, quad.pos.x - finalPos);
+		canAttack = true;
+	}
+	targetXPos = quad.pos.x - desiredStep;
+}
+bool Slime::PerformAction(float dt)
+{
+	if (activeAnimation == Character::HURT || activeAnimation == Character::DIE) return false;
+	if (health <= 0) {
+		SetAnimation(Character::DIE);
+		return false;
+	}
+	if (targetXPos < 1000.0f)
+	{
+		SetAnimation(Character::MOVE);
+		quad.pos.x = quad.pos.x - 1.0f * dt;
+		if (quad.pos.x <= targetXPos)
+		{
+			quad.pos.x = targetXPos;
+			targetXPos = 100000.0f;
+		}
+	}
+	else
+	{
+		if (canAttack && activeAnimation != Character::ATTACK)
+		{
+			GM_PlaySound(SOUNDS::SOUND_SLIME_ATTACK, 1.0f);
+			SetAnimation(Character::ATTACK);
+			canAttack = false;
+		}
+		else
+		{
+			if (activeAnimation == Character::ATTACK) return false;
+			SetAnimation(Character::IDLE);
+			return true;
+		}
+	}
+	return false;
+}
+
 ParticleHandlerEntity::ParticleHandlerEntity()
 	: base(GM_GetGameManager()->atlas, 5000)
 {

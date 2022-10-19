@@ -77,8 +77,10 @@ int main()
 	{
 		WavFile* clackWav = AU_LoadFile(game->audio, "Assets/clack.wav");
 		WavFile* slimeDieWav = AU_LoadFile(game->audio, "Assets/slime_die.wav");
+		WavFile* slimeAttackWav = AU_LoadFile(game->audio, "Assets/slime_attack.wav");
 		manager->audioFiles.push_back(clackWav);
 		manager->audioFiles.push_back(slimeDieWav);
+		manager->audioFiles.push_back(slimeAttackWav);
 
 	}
 	

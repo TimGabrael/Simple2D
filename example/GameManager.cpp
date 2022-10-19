@@ -14,6 +14,7 @@ float GM_GetRandomFloat(float start, float end)
 
 void GameManager::RenderCallback(GameState* state, float dt)
 {
+	static bool switchedEnemyInTurn = false;
 	if (attackCycleState == BALLS_FALLING)
 	{
 		if (ballList.empty())
@@ -33,54 +34,58 @@ void GameManager::RenderCallback(GameState* state, float dt)
 			if (waitTimer < 0.04f) waitTimer += dt;
 			else
 			{
-				waitTimer = 0.0f;
-				attackCycleState = ATTACK_CYCLE_STATES::ENEMY_TURN;
-				curEnemyInTurn = 0;
+				bool allIdle = true;
+				for (Character* enemy : enemyList)
+				{
+					if (enemy->activeAnimation != Character::IDLE)
+					{
+						allIdle = false;
+					}
+				}
+				if (allIdle)
+				{
+					waitTimer = 0.0f;
+					attackCycleState = ATTACK_CYCLE_STATES::ENEMY_TURN;
+					curEnemyInTurn = 0;
+					switchedEnemyInTurn = true;
+					enemyActionList = enemyList;
+				}
 			}
 		}
 	}
 	else if (attackCycleState == ATTACK_CYCLE_STATES::ENEMY_TURN)
 	{
-		if (curEnemyInTurn < enemyList.size() && curEnemyInTurn >= 0)
+
+		if (curEnemyInTurn < enemyActionList.size() && curEnemyInTurn >= 0)
 		{
-			Character* curEnemy = enemyList.at(curEnemyInTurn);
-			if (projList.empty() && curEnemy->activeAnimation == Character::IDLE)
+			Character* curEnemy = enemyActionList.at(curEnemyInTurn);
+			bool found = false;
+			for (uint32_t i = 0; i < enemyList.size(); i++)
 			{
-				if (waitTimer < 0.04f) waitTimer += dt;
-				else 
+				if (curEnemy == enemyList.at(i))
 				{
-					waitTimer = 0.0f;
-					curEnemyInTurn++;
+					found = true;
 				}
 			}
-		}
-		else
-		{
-			curEnemyInTurn = 0;
-			waitTimer = 0.0f;
-			attackCycleState = ATTACK_CYCLE_STATES::MOVE_TURN;
-		}
-	}
-	else if (attackCycleState == ATTACK_CYCLE_STATES::MOVE_TURN)
-	{
-		if (curEnemyInTurn < enemyList.size() && curEnemyInTurn >= 0)
-		{
-			Character* curEnemy = enemyList.at(curEnemyInTurn);
-			const float desiredPos = background->entXStart + (curEnemyInTurn + 1) * background->xSteps;		// +1 as player is on 0
-			if (curEnemy->quad.pos.x <= desiredPos)
+			if (found)
 			{
-				curEnemy->SetAnimation(Character::IDLE);
-				//if (waitTimer < 0.04f) waitTimer += dt;
-				//else
+				if (switchedEnemyInTurn)
+				{
+					curEnemy->BeginAction();
+					switchedEnemyInTurn = false;
+				}
+				if (curEnemy->PerformAction(dt))
 				{
 					waitTimer = 0.0f;
 					curEnemyInTurn++;
+					switchedEnemyInTurn = true;
 				}
 			}
 			else
 			{
-				curEnemy->SetAnimation(Character::MOVE);
-				curEnemy->quad.pos.x = glm::max(desiredPos, curEnemy->quad.pos.x - 1.0f * dt);
+				waitTimer = 0.0f;
+				curEnemyInTurn++;
+				switchedEnemyInTurn = true;
 			}
 		}
 		else
@@ -377,6 +382,7 @@ ENTITY_TYPE GM_GenerateRandomPegType()
 
 void GM_PlaySound(SOUNDS sound, float volume)
 {
+	if (sound >= SOUNDS::SOUND_NONE) return;
 	GameState* s = GetGameState();
 	GameManager* m = GM_GetGameManager();
 	AU_PlayAudio(s->audio, m->audioFiles.at(sound), volume);

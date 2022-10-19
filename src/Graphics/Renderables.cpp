@@ -243,6 +243,7 @@ void ParticlesBase::Update(float dt)
 			{
 				p.active = false;
 			}
+			p.pos += p.vel * dt;
 		}
 	}
 }

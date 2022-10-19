@@ -136,6 +136,10 @@ struct Character : public Entity
 	void UpdateAnimation(float dt);
 	void SetAnimation(ANIMATION anim);
 
+	virtual void BeginAction() = 0;
+	virtual bool PerformAction(float dt) = 0;
+
+	void ApplyDamage(enum SOUNDS hurt, enum SOUNDS die, int dmg);
 	
 	AnimatedQuad quad;
 	float animTimer = 0.0f;
@@ -151,14 +155,23 @@ struct Player : public Character
 	~Player();
 	virtual void Update(float dt) {};
 	virtual void UpdateFrame(float dt) override;
+
+	virtual void BeginAction() override;
+	virtual bool PerformAction(float dt) override;
 };
 
 struct Slime : public Character
 {
 	Slime(const glm::vec2& pos, float size);
 	~Slime();
+
+	virtual void BeginAction() override;
+	virtual bool PerformAction(float dt) override;
+
 	virtual void Update(float dt) {};
 	virtual void UpdateFrame(float dt) override;
+	float targetXPos;
+	bool canAttack;
 };
 
 struct ParticleHandlerEntity : public Entity
