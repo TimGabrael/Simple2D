@@ -8,7 +8,7 @@ struct Vertex2D
 {
 	glm::vec2 pos;
 	glm::vec2 uv;
-	uint32_t col;
+	glm::vec4 col;
 };
 
 enum RENDERABLE_FLAGS
@@ -28,7 +28,7 @@ struct Renderable
 
 struct TextureQuad : public Renderable
 {
-	TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const glm::vec2& uvStart, const glm::vec2& uvEnd, GLuint tex = 0, uint32_t col = 0xFFFFFFFF, int layer = 0);
+	TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const glm::vec2& uvStart, const glm::vec2& uvEnd, GLuint tex = 0, const glm::vec4& col = glm::vec4(1.0f), int layer = 0);
 	virtual ~TextureQuad() = default;
 	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
 	virtual int GetLayer() const;
@@ -41,8 +41,8 @@ struct TextureQuad : public Renderable
 	glm::vec2 halfSize;
 	glm::vec2 uvStart;
 	glm::vec2 uvEnd;
+	glm::vec4 col;
 	float angle;
-	uint32_t col;
 	int layer = 0;
 	GLuint texture;
 	uint32_t flags;
@@ -50,7 +50,7 @@ struct TextureQuad : public Renderable
 
 struct AnimatedQuad : public Renderable
 {
-	AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, struct AtlasTexture* tex, uint32_t col = 0xFFFFFFFF, int layer = 0);
+	AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, struct AtlasTexture* tex, const glm::vec4& col = glm::vec4(1.0f), int layer = 0);
 	virtual ~AnimatedQuad() = default;
 
 	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
@@ -70,9 +70,9 @@ struct AnimatedQuad : public Renderable
 	std::vector<Range> range;
 	glm::vec2 pos;
 	glm::vec2 halfSize;
+	glm::vec4 col;
 	struct AtlasTexture* atlas;
 	float angle;
-	uint32_t col;
 	int layer = 0;
 	GLuint texture;
 	uint32_t animIdx = 0;
@@ -87,8 +87,8 @@ struct Particle
 	glm::vec2 vel;
 	glm::vec2 sizeBegin; // these are half sizes
 	glm::vec2 sizeEnd;	 // these are half sizes
-	uint32_t colBegin;
-	uint32_t colEnd;
+	glm::vec4 colBegin;
+	glm::vec4 colEnd;
 	uint32_t textureIdx;
 	float rotationBegin;
 	float rotationEnd;
@@ -108,7 +108,7 @@ struct ParticlesBase : public Renderable
 	void Update(float dt);
 
 
-	void AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, uint32_t textureIdx, float rotationBegin, float rotationEnd, float lifeTime);
+	void AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, const glm::vec4& colBegin, const glm::vec4& colEnd, uint32_t textureIdx, float rotationBegin, float rotationEnd, float lifeTime);
 
 
 	void AddParticleToVertices(Particle& p, std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds);

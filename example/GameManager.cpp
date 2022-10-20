@@ -298,13 +298,16 @@ void GameManager::RenderCallback(GameState* state, float dt)
 
 	if (this->overlayMenuActive) DrawOverlayMenu(state);
 	
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, ppData.intermediateFbo);
 	glViewport(0, 0, state->winWidth, state->winHeight);
 	glClearColor(0.4f, 0.4f, 0.4f, 1.0f);
 	glClearDepthf(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	RE_RenderScene(state->renderer, viewProj, state->scene);
+
+
+	RE_RenderPostProcessingBloom(state->renderer, &ppData, ppData.intermediateTexture, state->winWidth, state->winHeight, 0, state->winWidth, state->winHeight);
 
 
 	//ImGui::ShowDemoWindow(nullptr);
@@ -371,6 +374,9 @@ void GameManager::OnWindowResize(int w, int h)
 	vpStart = { -2.0f * state->aspectRatio, -2.0f };
 	vpEnd = { 2.0f * state->aspectRatio, 2.0f };
 	viewProj = glm::orthoRH(vpStart.x, vpEnd.x, vpStart.y, vpEnd.y, 0.0f, 1.0f);
+
+	RE_CleanUpPostProcessingRenderData(&ppData);
+	RE_CreatePostProcessingRenderData(&ppData, state->winWidth, state->winHeight);
 }
 
 void GameManager::OnKey(int key, int scancode, int action, int mods)
@@ -457,6 +463,8 @@ GameManager* GM_CreateGameManager(GameState* state)
 	out->startVelocity = 8.0f;
 	out->activeState = GAME_STATE_MAIN_MENU;
 	
+	RE_CreatePostProcessingRenderData(&out->ppData, state->winWidth, state->winHeight);
+
 	return out;
 }
 
@@ -466,7 +474,7 @@ GameManager* GM_GetGameManager()
 	return (GameManager*)GetGameState()->manager;
 }
 
-void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime)
+void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, const glm::vec4& colBegin, const glm::vec4& colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime)
 {
 	if (GM_GetGameManager()->particleHandler)
 	{
@@ -474,7 +482,7 @@ void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2&
 		b.AddParticle(pos, vel, sizeBegin, sizeEnd, colBegin, colEnd, sprite, rotationBegin, rotationEnd, lifeTime);
 	}
 }
-void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& vel, const glm::vec2& velVariation, float sizeBegin, float sizeEnd, uint32_t colBegin, uint32_t colEnd, float lifeTime)
+void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& vel, const glm::vec2& velVariation, float sizeBegin, float sizeEnd, const glm::vec4& colBegin, const glm::vec4& colEnd, float lifeTime)
 {
 	GameState* s = GetGameState();
 	GameManager* m = GM_GetGameManager();

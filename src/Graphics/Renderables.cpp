@@ -10,7 +10,7 @@ Renderable::~Renderable()
 	SC_RemoveRenderable(GetGameState()->scene, this);
 }
 
-TextureQuad::TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const glm::vec2& uvStart, const glm::vec2& uvEnd, GLuint tex, uint32_t col, int layer)
+TextureQuad::TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const glm::vec2& uvStart, const glm::vec2& uvEnd, GLuint tex, const glm::vec4& col, int layer)
 {
 	this->pos = pos;
 	this->halfSize = halfSz;
@@ -75,7 +75,7 @@ uint32_t TextureQuad::GetFlags() const
 }
 
 
-AnimatedQuad::AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, AtlasTexture* tex, uint32_t col, int layer)
+AnimatedQuad::AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, AtlasTexture* tex, const glm::vec4& col, int layer)
 {
 	this->pos = pos;
 	this->halfSize = halfSz;
@@ -161,24 +161,12 @@ void Particle::AddToVertices(const AtlasTexture& atlas, std::vector<Vertex2D>& v
 
 	const glm::vec2 halfSize = { sizeEnd.x * (1.0f - rem) + sizeBegin.x * rem, sizeEnd.y * (1.0f - rem) + sizeBegin.y * rem };
 
-	const glm::vec4 beginColor = {
-		(float)(this->colBegin & 0xFF) / (float)0xFF,
-		(float)((this->colBegin & 0xFF00) >> 8) / (float)0xFF,
-		(float)((this->colBegin & 0xFF0000) >> 16) / (float)0xFF,
-		(float)(this->colBegin >> 24) / (float)0xFF,
-	};
-	const glm::vec4 endColor = {
-		(float)(this->colEnd & 0xFF) / (float)0xFF,
-		(float)((this->colEnd & 0xFF00) >> 8) / (float)0xFF,
-		(float)((this->colEnd & 0xFF0000) >> 16) / (float)0xFF,
-		(float)(this->colEnd >> 24) / (float)0xFF,
-	};
 
-	const uint32_t col =
-		(uint32_t)((endColor.x * (1.0f - rem) + beginColor.x * rem) * 0xFF) |
-		((uint32_t)((endColor.y * (1.0f - rem) + beginColor.y * rem) * 0xFF) << 8) |
-		((uint32_t)((endColor.z * (1.0f - rem) + beginColor.z * rem) * 0xFF) << 16) |
-		((uint32_t)((endColor.w * (1.0f - rem) + beginColor.w * rem) * 0xFF) << 24);
+	const glm::vec4 col = { (colEnd.x * (1.0f - rem) + colBegin.x * rem),
+							(colEnd.y * (1.0f - rem) + colBegin.y * rem),
+							(colEnd.z * (1.0f - rem) + colBegin.z * rem),
+							(colEnd.w * (1.0f - rem) + colBegin.w * rem)
+	};
 		
 
 	const float s = sinf(angle);
@@ -247,7 +235,7 @@ void ParticlesBase::Update(float dt)
 		}
 	}
 }
-void ParticlesBase::AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, uint32_t textureIdx, float rotationBegin, float rotationEnd, float lifeTime)
+void ParticlesBase::AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, const glm::vec4& colBegin, const glm::vec4& colEnd, uint32_t textureIdx, float rotationBegin, float rotationEnd, float lifeTime)
 {
 	if (textureIdx < tex->numBounds)
 	{

@@ -22,11 +22,12 @@ struct BaseRenderable : public Renderable
 
 		GameManager* m = GM_GetGameManager();
 
+		const glm::vec4 col = glm::vec4(1.0f, 1.0f, 1.0f, 0.6f);
 
-		verts.push_back({ {m->vpStart.x, m->vpStart.y }, {0.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {startBound.x, m->vpStart.y }, {1.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {startBound.x, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
-		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, 0x60FFFFFF });
+		verts.push_back({ {m->vpStart.x, m->vpStart.y }, {0.0f, 1.0f}, col });
+		verts.push_back({ {startBound.x, m->vpStart.y }, {1.0f, 1.0f}, col });
+		verts.push_back({ {startBound.x, m->vpEnd.y }, {1.0f, 0.0f}, col });
+		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, col });
 
 		inds.push_back(cur);
 		inds.push_back(cur + 1);
@@ -36,10 +37,10 @@ struct BaseRenderable : public Renderable
 		inds.push_back(cur);
 
 		cur = verts.size();
-		verts.push_back({ {endBound.x, m->vpStart.y }, {0.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {m->vpEnd.x, m->vpStart.y }, {1.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
-		verts.push_back({ {endBound.x, m->vpEnd.y }, {0.0f, 0.0f}, 0x60FFFFFF });
+		verts.push_back({ {endBound.x, m->vpStart.y }, {0.0f, 1.0f}, col });
+		verts.push_back({ {m->vpEnd.x, m->vpStart.y }, {1.0f, 1.0f}, col });
+		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, col });
+		verts.push_back({ {endBound.x, m->vpEnd.y }, {0.0f, 0.0f}, col });
 
 		inds.push_back(cur);
 		inds.push_back(cur + 1);
@@ -50,10 +51,10 @@ struct BaseRenderable : public Renderable
 
 
 		cur = verts.size();
-		verts.push_back({ {m->vpStart.x,endBound.y }, {0.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {m->vpEnd.x, endBound.y }, {1.0f, 1.0f}, 0x60FFFFFF });
-		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, 0x60FFFFFF });
-		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, 0x60FFFFFF });
+		verts.push_back({ {m->vpStart.x,endBound.y }, {0.0f, 1.0f}, col });
+		verts.push_back({ {m->vpEnd.x, endBound.y }, {1.0f, 1.0f}, col });
+		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, col });
+		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, col });
 
 		inds.push_back(cur);
 		inds.push_back(cur + 1);
@@ -182,7 +183,7 @@ void Base::OnCollideWithBall(struct Ball* ball, b2Fixture* fixture, const glm::v
 
 
 Ball::Ball(const glm::vec2& pos, const glm::vec2& velocity, float size) 
-	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[SPRITES::DISH_2].start, GM_GetGameManager()->atlas->bounds[SPRITES::DISH_2].end, GM_GetGameManager()->atlas->texture.uniform, 0xFFFFFFFF, 2)
+	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[SPRITES::DISH_2].start, GM_GetGameManager()->atlas->bounds[SPRITES::DISH_2].end, GM_GetGameManager()->atlas->texture.uniform, glm::vec4(1.5f, 1.5f, 1.5f, 1.0f), 5)
 {
 	GameState* game = GetGameState();
 	b2BodyDef bodyDef{};
@@ -228,12 +229,12 @@ void Ball::OnCollideWithBall(struct Ball* ball, b2Fixture* fixture, const glm::v
 }
 void Ball::UpdateFrame(float dt) 
 {
-	GM_AddParticle(quad.pos, glm::vec2(0.0f), quad.halfSize, quad.halfSize * 0.1f, 0xFFFFFFFF, 0xFFFFFFFF, SPRITES::DISH_2, 0.0f, 0.0f, 0.1f);
+	GM_AddParticle(quad.pos, glm::vec2(0.0f), quad.halfSize, quad.halfSize * 0.1f, glm::vec4(1.0f), glm::vec4(1.0f), SPRITES::DISH_2, 0.0f, 0.0f, 0.1f);
 	quad.UpdateFromBody(body);
 }
 
 Peg::Peg(const glm::vec2& pos, float size, ENTITY_TYPE type) : 
-	quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[sprites[type]].start, GM_GetGameManager()->atlas->bounds[sprites[type]].end, GM_GetGameManager()->atlas->texture.uniform, 0xFFFFFFFF, 1)
+	quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[sprites[type]].start, GM_GetGameManager()->atlas->bounds[sprites[type]].end, GM_GetGameManager()->atlas->texture.uniform, glm::vec4(1.0f), 1)
 {
 	GameState* game = GetGameState();
 	b2BodyDef bodyDef{};
@@ -318,17 +319,18 @@ void Peg::OnCollideWithBall(Ball* ball, b2Fixture* fixture, const glm::vec2& nor
 		};
 		
 		b2Vec2 pos = body->GetPosition();
-		GM_AddParticle({ pos.x, pos.y }, glm::vec2(0.0f), glm::vec2(quad.halfSize), glm::vec2(quad.halfSize * 2.0f), 0xFFFFFFFF, 0x60FFFFFF, SPRITES::PIZZA, 0.0f, 0.0f, 0.2f);
+		GM_AddParticle({ pos.x, pos.y }, glm::vec2(0.0f), glm::vec2(quad.halfSize), glm::vec2(quad.halfSize * 2.0f), glm::vec4(1.0f), glm::vec4(1.0f, 1.0f, 1.0f, 0.6f), SPRITES::PIZZA, 0.0f, 0.0f, 0.2f);
 		
 		GM_PlaySound(SOUNDS::SOUND_CLACK, 0.2f);
 
-		uint32_t textColor = 0xFFFFFF;
+		glm::vec4 textColor = glm::vec4(1.0f);
 		if (m->stats.critMultiplier > 1.0f)
 		{
-			textColor = 0x00d7FF;
+			textColor.b = 0;
+			textColor.g = 0.6f;
 		}
 		std::string dmgString = std::to_string((int)m->stats.accumulatedDamage);
-		GM_AddTextParticle(dmgString.c_str(), glm::vec2(pos.x, pos.y + 0.05f), glm::vec2(0.0f, 0.3f), glm::vec2(0.0f, 0.0f), 1.0f, 0.5f, textColor | (0xFF << 24), textColor | (0xA0 << 24), 0.4f);
+		GM_AddTextParticle(dmgString.c_str(), glm::vec2(pos.x, pos.y + 0.05f), glm::vec2(0.0f, 0.3f), glm::vec2(0.0f, 0.0f), 1.0f, 0.5f, textColor, glm::vec4(textColor.x, textColor.y, textColor.z, 0.6f), 0.4f);
 
 	}
 	else
@@ -338,19 +340,19 @@ void Peg::OnCollideWithBall(Ball* ball, b2Fixture* fixture, const glm::vec2& nor
 }
 void Peg::SetInactive()
 {
-	quad.col = (quad.col & 0xFFFFFF) | (0x80 << 24);
+	quad.col.a = 0.4f;
 	body->SetEnabled(false);
 	flags |= PEG_FLAGS::INACTIVE;
 }
 void Peg::SetActive()
 {
-	quad.col = (quad.col & 0xFFFFFF) | (0xFF << 24);
+	quad.col.a = 1.0f;
 	body->SetEnabled(true);
 	flags &= ~PEG_FLAGS::INACTIVE;
 }
 
 Projectile::Projectile(const glm::vec2& pos, float size, SPRITES sprite)
-	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[sprite].start, GM_GetGameManager()->atlas->bounds[sprite].end, GM_GetGameManager()->atlas->texture.uniform, 0xFFFFFFFF, 1)
+	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas->bounds[sprite].start, GM_GetGameManager()->atlas->bounds[sprite].end, GM_GetGameManager()->atlas->texture.uniform, glm::vec4(1.0f), 1)
 {
 
 }
@@ -411,7 +413,7 @@ bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 
 
 Character::Character(const glm::vec2& pos, float size)
-	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas, 0xFFFFFFFF, 1)
+	: quad(pos, glm::vec2(size), GM_GetGameManager()->atlas, glm::vec4(1.0f), 1)
 {
 
 }
@@ -624,7 +626,7 @@ bool Slime::PerformAction(float dt)
 }
 
 ParticleHandlerEntity::ParticleHandlerEntity()
-	: base(GM_GetGameManager()->atlas, 5000)
+	: base(GM_GetGameManager()->atlas, 5000, 4)
 {
 
 }

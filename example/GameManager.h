@@ -256,6 +256,7 @@ struct GameManager : public BaseGameManager
 	Player* player = nullptr;
 	ParticleHandlerEntity* particleHandler = nullptr;
 
+	PostProcessingRenderData ppData;
 
 	glm::vec2 vpStart;
 	glm::vec2 vpEnd;
@@ -280,8 +281,8 @@ GameManager* GM_GetGameManager();
 float GM_GetRandomFloat(float start, float end);
 
 
-void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, uint32_t colBegin, uint32_t colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime);
-void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& vel, const glm::vec2& velVariation, float sizeBegin, float sizeEnd, uint32_t colBegin, uint32_t colEnd, float lifeTime);
+void GM_AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, const glm::vec4& colBegin, const glm::vec4& colEnd, SPRITES sprite, float rotationBegin, float rotationEnd, float lifeTime);
+void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& vel, const glm::vec2& velVariation, float sizeBegin, float sizeEnd, const glm::vec4& colBegin, const glm::vec4& colEnd, float lifeTime);
 
 void GM_ClearScene();
 void GM_FillScene();

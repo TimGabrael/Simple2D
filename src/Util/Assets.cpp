@@ -424,7 +424,7 @@ struct AtlasTexture* AM_LoadTextureAtlas(const char* file, FontMetrics** metrics
 	{
 		rect_type* cur = (rect_type*)curRead;
 
-		out->bounds[i].start = { (float)cur->x / (float)out->texture.width, (float)cur->y / (float)out->texture.height };
+		out->bounds[i].start = { (float)(cur->x + 0.5f) / (float)out->texture.width, (float)(cur->y + 0.5f) / (float)out->texture.height };
 		out->bounds[i].end = { (float)(cur->x + cur->w) / (float)out->texture.width, (float)(cur->y + cur->h) / (float)out->texture.height };
 
 		curRead += sizeof(rect_type);
