@@ -15,11 +15,13 @@ set(ENGINE_FILES ${IMGUI_FILES} "src/GameState.cpp" "src/Audio/AudioManager.cpp"
 set(ENGINE_LIBRARYS glfw ${GLAD_LIBRARIES} NFDriver ${PHYSX_LIBRARIES} zlibstatic Xinput box2d)
 set(ENGINE_INCLUDES 3rd-party/glfw/include 3rd-party/glm 3rd-party/NFDriver/include 3rd-party/rectpack2D/src 3rd-party/imgui 3rd-party/imgui/backends 3rd-party/box2d/include src/zlibconfig 3rd-party/zlib/ src/)
 
+set(ENGINE_FILES ${ENGINE_FILES} PARENT_SCOPE)
+set(ENGINE_LIBRARYS ${ENGINE_LIBRARIES} PARENT_SCOPE)
+set(ENGINE_INCLUDES ${ENGINE_INCLUDES} PARENT_SCOPE)
 
-
-add_executable(Example2D "example/main.cpp" ${ENGINE_FILES} "src/Graphics/Renderables.cpp" "example/Entitys.h" "example/Entitys.cpp"  )
-
-set_target_properties(Example2D PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
-
-target_include_directories(Example2D PRIVATE ${ENGINE_INCLUDES})
-target_link_libraries(Example2D PRIVATE ${ENGINE_LIBRARYS})
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+	add_executable(Example2D "example/main.cpp" ${ENGINE_FILES} "src/Graphics/Renderables.cpp" "example/Entitys.h" "example/Entitys.cpp"  )
+	set_target_properties(Example2D PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+	target_include_directories(Example2D PRIVATE ${ENGINE_INCLUDES})
+	target_link_libraries(Example2D PRIVATE ${ENGINE_LIBRARYS})
+endif()

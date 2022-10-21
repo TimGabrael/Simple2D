@@ -75,7 +75,6 @@ int main()
 		manager->metrics = AM_AtlasAddGlyphRangeFromFile(build, "Assets/consola.ttf", '0', 'z' + 1, 20.0f);
 		manager->atlas = AM_EndTextureAtlas(build, false);
 	}
-
 	{
 		WavFile* clackWav = AU_LoadFile(game->audio, "Assets/clack.wav");
 		WavFile* slimeDieWav = AU_LoadFile(game->audio, "Assets/slime_die.wav");
@@ -83,9 +82,9 @@ int main()
 		manager->audioFiles.push_back(clackWav);
 		manager->audioFiles.push_back(slimeDieWav);
 		manager->audioFiles.push_back(slimeAttackWav);
-
 	}
 	
+
 	if (manager->activeState == GAME_STATE_BATTLE)
 	{
 		GM_FillScene();
