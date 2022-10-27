@@ -6,7 +6,7 @@
 #include "imgui_impl_opengl3.h"
 #include "Physics/Physics.h"
 #include "Audio/AudioManager.h"
-
+#define PRESSED_KEY_BUFFER 255
 #define TIME_STEP 1.0f / 60.0f
 
 struct BaseGameManager
@@ -32,6 +32,9 @@ struct GameState
 	struct AudioManager* audio;
 	BaseGameManager* manager;
 	struct GLFWwindow* window;
+	int* pressedKeys;
+	int numPressedKeys;
+
 	uint32_t winX;
 	uint32_t winY;
 	uint32_t winWidth;
@@ -55,8 +58,9 @@ GameState* GetGameState();
 void SetFullscreen(GameState* state, int monitorIdx, int* width, int* height);
 void SetWindowed(GameState* state, int width, int height);
 
-bool GetKey(int key);
-bool GetMouseButton(int button);
+// first bit signals just pressed, second bit signals is down
+uint8_t GetKey(int key);
+uint8_t GetMouseButton(int button);
 
 void UpateGameState();
 

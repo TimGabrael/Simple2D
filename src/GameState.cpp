@@ -34,15 +34,23 @@ static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, i
 	if (g_gameState && g_gameState->manager)
 	{
 		g_gameState->manager->OnKey(key, scancode, action, mods);
-		if (key == GLFW_KEY_ENTER && action == GLFW_PRESS)
+		if (action == GLFW_PRESS)
 		{
-			if (g_gameState->isFullscreen)
+			if ((g_gameState->numPressedKeys + 1) < PRESSED_KEY_BUFFER)
 			{
-				SetWindowed(g_gameState, 1600, 900);
+				g_gameState->pressedKeys[g_gameState->numPressedKeys] = key;
+				g_gameState->numPressedKeys++;
 			}
-			else
+			if (key == GLFW_KEY_ENTER)
 			{
-				SetFullscreen(g_gameState, 0, nullptr, nullptr);
+				if (g_gameState->isFullscreen)
+				{
+					SetWindowed(g_gameState, 1600, 900);
+				}
+				else
+				{
+					SetFullscreen(g_gameState, 0, nullptr, nullptr);
+				}
 			}
 		}
 	}
@@ -51,8 +59,15 @@ static void MouseButtonCallback(GLFWwindow* window, int button, int action, int 
 {
 	if (g_gameState && g_gameState->manager)
 	{
-		if (!ImGui::GetIO().WantCaptureMouse)
-			g_gameState->manager->OnMouseButton(button, action, mods);
+		g_gameState->manager->OnMouseButton(button, action, mods);
+		if(action == GLFW_PRESS)
+		{
+			if ((g_gameState->numPressedKeys + 1) < PRESSED_KEY_BUFFER)
+			{
+				g_gameState->pressedKeys[g_gameState->numPressedKeys] = button;
+				g_gameState->numPressedKeys++;
+			}
+		}
 	}
 }
 static void MousePositionCallback(GLFWwindow* window, double x, double y)
@@ -133,6 +148,9 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	g_gameState->accumulatedTime = 0.0f;
 	g_gameState->tickMultiplier = 1.0f;
 
+	g_gameState->pressedKeys = new int[PRESSED_KEY_BUFFER];
+	g_gameState->numPressedKeys = 0;
+
 	glfwMakeContextCurrent(window);
 	glfwSetWindowAspectRatio(window, 16, 9);
 	glfwSetFramebufferSizeCallback(window, WindowResizeCallback);
@@ -205,6 +223,9 @@ void CleanUpGameState(GameState* state)
 	PH_CleanUpPhysicsScene(state->physics);
 	RE_CleanUpRenderer(state->renderer);
 	AU_ShutdownAudioManager(state->audio);
+	delete[] state->pressedKeys;
+	state->pressedKeys = nullptr;
+	state->numPressedKeys = 0;
 	state->scene = 0;
 	state->renderer = 0;
 	state->audio = 0;
@@ -247,21 +268,33 @@ void SetWindowed(GameState* state, int width, int height)
 	glfwSetWindowMonitor(state->window, nullptr, 0, 32, width, height, 0);
 }
 
-bool GetKey(int key)
+static uint8_t FindKeyInList(int key)
+{
+	for (int i = 0; i < g_gameState->numPressedKeys; i++)
+	{
+		if (g_gameState->pressedKeys[i] == key) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+uint8_t GetKey(int key)
 {
 	if (ImGui::GetIO().WantCaptureKeyboard) return false;
-	return glfwGetKey(g_gameState->window, key);
+	return (glfwGetKey(g_gameState->window, key) << 1) | FindKeyInList(key);
 }
-bool GetMouseButton(int button)
+uint8_t GetMouseButton(int button)
 {
 	if (ImGui::GetIO().WantCaptureMouse) return false;
-	return glfwGetMouseButton(g_gameState->window, button);
+	return (glfwGetMouseButton(g_gameState->window, button) << 1) | FindKeyInList(button);
 }
 
 void UpateGameState()
 {
 	while (true)
 	{
+		g_gameState->numPressedKeys = 0;
 		glfwPollEvents();
 		if (glfwWindowShouldClose(g_gameState->window)) break;
 
