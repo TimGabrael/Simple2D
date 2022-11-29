@@ -139,6 +139,96 @@ void main()\
 }";
 
 
+struct RenderCommand
+{
+	uint32_t firstInd = 0;
+	uint32_t indCount = 0;
+	GLuint texture = 0;
+};
+
+
+struct InternalRenderContext2D
+{
+	void Draw(Vertex2D* vtx, uint32_t numVerts, uint32_t* inds, uint32_t numInds, GLuint texture)
+	{
+		RenderCommand* command = nullptr;
+		{
+			uint32_t cmdCount = cmds.size();
+			for(uint32_t i = 0; i < cmdCount; i++)
+			{
+				if (cmds.at(i).texture == texture)
+				{
+					command = &cmds.at(i);
+				}
+			}
+			if (!command)
+			{
+				uint32_t prevEnd = 0;
+				if (cmdCount > 0)
+				{
+					prevEnd = cmds.at(cmdCount - 1).firstInd + cmds.at(cmdCount - 1).indCount;
+				}
+				cmds.push_back({});
+				command = &cmds.at(cmdCount);
+				command->firstInd = prevEnd;
+				command->indCount = 0;
+				command->texture = texture;
+			}
+		}
+
+		uint32_t oldSz = vertices.size();
+		vertices.resize(oldSz + numVerts);
+		memcpy(vertices.data() + oldSz, vtx, numVerts * sizeof(Vertex2D));
+
+		for (uint32_t i = 0; i < numInds; i++)
+		{
+			indices.push_back(inds[i] + oldSz);
+		}
+
+		command->indCount += numInds;
+	}
+	void DrawQuad(const glm::vec2& tl, const glm::vec2& br, const glm::vec2& uvTL, const glm::vec2& uvBR, const glm::vec4& col, GLuint texture, float angle)
+	{
+		const float s = sinf(angle);
+		const float c = cosf(angle);
+
+		glm::vec2 halfSize = (br - tl) / 2.0f;
+
+		const glm::vec2 pos = tl + halfSize;
+		halfSize = glm::abs(halfSize);
+
+		const float x1 = -halfSize.x * c + halfSize.y * s;
+		const float x2 = halfSize.x * c + halfSize.y * s;
+		const float x3 = halfSize.x * c - halfSize.y * s;
+		const float x4 = -halfSize.x * c - halfSize.y * s;
+
+		const float y1 = -halfSize.x * s - halfSize.y * c;
+		const float y2 = halfSize.x * s - halfSize.y * c;
+		const float y3 = halfSize.x * s + halfSize.y * c;
+		const float y4 = -halfSize.x * s + halfSize.y * c;
+
+		
+		Vertex2D verts[4] = {
+			{ {pos.x + x1, (pos.y + y1) }, {uvTL.x, uvBR.y}, col },
+			{ {pos.x + x2, (pos.y + y2) }, {uvBR.x, uvBR.y}, col },
+			{ {pos.x + x3, (pos.y + y3) }, {uvBR.x, uvTL.y}, col },
+			{ {pos.x + x4, (pos.y + y4) }, {uvTL.x, uvTL.y}, col }
+		};
+
+		uint32_t inds[6] = {
+			0,1,2,2,3,0
+		};
+
+		Draw(verts, 4, inds, 6, texture);
+	}
+
+	std::vector<RenderCommand> cmds;
+	std::vector<Vertex2D> vertices;
+	std::vector<uint32_t> indices;
+};
+
+
+
 
 static GLuint CreateProgram(const char* vtxShader, const char* frgShader)
 {
@@ -291,12 +381,6 @@ struct BaseRenderInfo
 	GLuint program;
 	GLuint viewProjLoc;
 };
-struct DrawCommand
-{
-	uint32_t firstIndex;
-	uint32_t numInd;
-	GLuint texture;
-};
 
 struct Renderer
 {
@@ -310,11 +394,7 @@ struct Renderer
 	GLuint vertexBuffer;
 	GLuint indexBuffer;
 
-	std::vector<Vertex2D> vertexList;
-	std::vector<uint32_t> indList;
-
-	std::vector<DrawCommand> commands;
-
+	InternalRenderContext2D renderContext;
 };
 
 struct Renderer* RE_CreateRenderer()
@@ -533,41 +613,25 @@ void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, Scene*
 		}
 	});
 
-	renderer->commands.push_back({ 0, 0, renderables[0]->GetTexture()});
 	int curLayer = renderables[0]->GetLayer();
 	
+	renderer->renderContext.cmds.clear();
+	renderer->renderContext.vertices.clear();
+	renderer->renderContext.indices.clear();
+
 	for (uint32_t i = 0; i < num; i++)
 	{
 		if (renderables[i]->GetFlags() & RENDERABLE_FLAGS::INACTIVE) break;
 
-		const uint32_t oldIndSize = renderer->indList.size();
-		if (renderables[i]->GetLayer() != curLayer)
-		{
-			renderer->commands.push_back({ oldIndSize, 0, renderables[i]->GetTexture()});
-		}
-		DrawCommand* cur = &renderer->commands.at(renderer->commands.size() - 1);
-		if (cur->texture != renderables[i]->GetTexture())
-		{
-			if (cur->texture == -1)
-			{
-				cur->texture = renderables[i]->GetTexture();
-			}
-			else
-			{
-				renderer->commands.push_back({ oldIndSize, (uint32_t)(renderer->indList.size() - oldIndSize), renderables[i]->GetTexture()});
-				cur = &renderer->commands.at(renderer->commands.size() - 1);
-			}
-		}
-		renderables[i]->AddVertices(renderer->vertexList, renderer->indList);
-		cur->numInd += renderer->indList.size() - oldIndSize;
+		renderables[i]->Draw((RenderContext2D*)&renderer->renderContext);
 	}
 
 	glBindVertexArray(renderer->vao);
 	glBindBuffer(GL_ARRAY_BUFFER, renderer->vertexBuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer->indexBuffer);
 
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * renderer->vertexList.size(), renderer->vertexList.data(), GL_DYNAMIC_DRAW);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * renderer->indList.size(), renderer->indList.data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex2D) * renderer->renderContext.vertices.size(), renderer->renderContext.vertices.data(), GL_DYNAMIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * renderer->renderContext.indices.size(), renderer->renderContext.indices.data(), GL_DYNAMIC_DRAW);
 
 	glUseProgram(renderer->info.program);
 
@@ -578,17 +642,15 @@ void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, Scene*
 	glUniformMatrix4fv(renderer->info.viewProjLoc, 1, GL_FALSE, (GLfloat*)&viewProj);
 	glActiveTexture(GL_TEXTURE0);
 
-	for (uint32_t i = 0; i < renderer->commands.size(); i++)
+	for (uint32_t i = 0; i < renderer->renderContext.cmds.size(); i++)
 	{
-		DrawCommand& cmd = renderer->commands.at(i);
+		RenderCommand& cmd = renderer->renderContext.cmds.at(i);
 		if(cmd.texture) glBindTexture(GL_TEXTURE_2D, cmd.texture);
 		else glBindTexture(GL_TEXTURE_2D, renderer->whiteTexture);
 
-		glDrawElements(GL_TRIANGLES, cmd.numInd, GL_UNSIGNED_INT, (const void*)(cmd.firstIndex * sizeof(uint32_t)));
+		glDrawElements(GL_TRIANGLES, cmd.indCount, GL_UNSIGNED_INT, (const void*)(cmd.firstInd * sizeof(uint32_t)));
 	}
-	renderer->indList.clear();
-	renderer->vertexList.clear();
-	renderer->commands.clear();
+
 }
 
 
@@ -684,4 +746,18 @@ void RE_RenderPostProcessingBloom(struct Renderer* renderer, const PostProcessin
 		glUniform1f(renderer->ppInfo.dualCopy.mipLevel2Loc, 0);
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 	}
+}
+
+
+
+
+
+void RenderContext2D::Draw(Vertex2D* vtx, uint32_t numVerts, uint32_t* inds, uint32_t numInds, GLuint texture)
+{
+	((InternalRenderContext2D*)this)->Draw(vtx, numVerts, inds, numInds, texture);
+}
+
+void RenderContext2D::DrawQuad(const glm::vec2& tl, const glm::vec2& br, const glm::vec2& uvTL, const glm::vec2& uvBR, const glm::vec4& col, GLuint texture, float angle)
+{
+	((InternalRenderContext2D*)this)->DrawQuad(tl, br, uvTL, uvBR, col, texture, angle);
 }

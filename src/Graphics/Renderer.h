@@ -32,6 +32,13 @@ struct PostProcessingRenderData
 	int numPPFbos;
 };
 
+struct Vertex2D
+{
+	glm::vec2 pos;
+	glm::vec2 uv;
+	glm::vec4 col;
+};
+
 
 struct Renderer* RE_CreateRenderer();
 void RE_CleanUpRenderer(struct Renderer* r);
@@ -46,3 +53,13 @@ void RE_RenderScene(struct Renderer* renderer, const glm::mat4& viewProj, Scene*
 
 
 void RE_RenderPostProcessingBloom(struct Renderer* renderer, const PostProcessingRenderData* ppData, GLuint srcTexture, uint32_t srcWidth, uint32_t srcHeight, GLuint targetFBO, uint32_t targetWidth, uint32_t targetHeight);
+
+
+struct RenderContext2D
+{
+	void Draw(Vertex2D* vtx, uint32_t numVerts, uint32_t* inds, uint32_t numInds, GLuint texture);
+	void DrawQuad(const glm::vec2& tl, const glm::vec2& br, const glm::vec2& uvTL, const glm::vec2& uvBR, const glm::vec4& col, GLuint texture, float angle);
+
+
+
+};

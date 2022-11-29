@@ -16,53 +16,15 @@ struct BaseRenderable : public Renderable
 		this->endBound = eBound;
 	}
 	virtual ~BaseRenderable() = default;
-	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
+	virtual void Draw(RenderContext2D* ctx)
 	{
-		uint32_t cur = verts.size();
-
 		GameManager* m = GM_GetGameManager();
 
 		const glm::vec4 col = glm::vec4(1.0f, 1.0f, 1.0f, 0.6f);
 
-		verts.push_back({ {m->vpStart.x, m->vpStart.y }, {0.0f, 1.0f}, col });
-		verts.push_back({ {startBound.x, m->vpStart.y }, {1.0f, 1.0f}, col });
-		verts.push_back({ {startBound.x, m->vpEnd.y }, {1.0f, 0.0f}, col });
-		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, col });
-
-		inds.push_back(cur);
-		inds.push_back(cur + 1);
-		inds.push_back(cur + 2);
-		inds.push_back(cur + 2);
-		inds.push_back(cur + 3);
-		inds.push_back(cur);
-
-		cur = verts.size();
-		verts.push_back({ {endBound.x, m->vpStart.y }, {0.0f, 1.0f}, col });
-		verts.push_back({ {m->vpEnd.x, m->vpStart.y }, {1.0f, 1.0f}, col });
-		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, col });
-		verts.push_back({ {endBound.x, m->vpEnd.y }, {0.0f, 0.0f}, col });
-
-		inds.push_back(cur);
-		inds.push_back(cur + 1);
-		inds.push_back(cur + 2);
-		inds.push_back(cur + 2);
-		inds.push_back(cur + 3);
-		inds.push_back(cur);
-
-
-		cur = verts.size();
-		verts.push_back({ {m->vpStart.x,endBound.y }, {0.0f, 1.0f}, col });
-		verts.push_back({ {m->vpEnd.x, endBound.y }, {1.0f, 1.0f}, col });
-		verts.push_back({ {m->vpEnd.x, m->vpEnd.y }, {1.0f, 0.0f}, col });
-		verts.push_back({ {m->vpStart.x, m->vpEnd.y }, {0.0f, 0.0f}, col });
-
-		inds.push_back(cur);
-		inds.push_back(cur + 1);
-		inds.push_back(cur + 2);
-		inds.push_back(cur + 2);
-		inds.push_back(cur + 3);
-		inds.push_back(cur);
-
+		ctx->DrawQuad(m->vpStart, {startBound.x, m->vpEnd.y}, {0.0f, 0.0f}, {1.0f, 1.0f}, col, this->GetTexture(), 0.0f);
+		ctx->DrawQuad({endBound.x, m->vpStart.y}, m->vpEnd, {0.0f, 0.0f}, {1.0f, 1.0f}, col, this->GetTexture(), 0.0f);
+		ctx->DrawQuad({m->vpStart.x, endBound.y}, m->vpEnd, {0.0f, 0.0f}, {1.0f, 1.0f}, col, this->GetTexture(), 0.0f);
 
 	}
 	virtual void UpdateFromBody(b2Body* body) {};

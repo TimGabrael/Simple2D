@@ -3,13 +3,8 @@
 #include "glm/glm.hpp"
 #include "Physics/Physics.h"
 #include "GameState.h"
+#include "Renderer.h"
 
-struct Vertex2D
-{
-	glm::vec2 pos;
-	glm::vec2 uv;
-	glm::vec4 col;
-};
 
 enum RENDERABLE_FLAGS
 {
@@ -20,7 +15,7 @@ struct Renderable
 {
 	Renderable();
 	virtual ~Renderable();
-	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) = 0;
+	virtual void Draw(struct RenderContext2D* ctx) = 0;
 	virtual int GetLayer() const = 0;
 	virtual GLuint GetTexture() const = 0;
 	virtual uint32_t GetFlags() const = 0;
@@ -30,7 +25,7 @@ struct TextureQuad : public Renderable
 {
 	TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const glm::vec2& uvStart, const glm::vec2& uvEnd, GLuint tex = 0, const glm::vec4& col = glm::vec4(1.0f), int layer = 0);
 	virtual ~TextureQuad() = default;
-	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
+	virtual void Draw(RenderContext2D* ctx) override;
 	virtual int GetLayer() const;
 	virtual GLuint GetTexture() const;
 	virtual uint32_t GetFlags() const;
@@ -53,7 +48,7 @@ struct AnimatedQuad : public Renderable
 	AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, struct AtlasTexture* tex, const glm::vec4& col = glm::vec4(1.0f), int layer = 0);
 	virtual ~AnimatedQuad() = default;
 
-	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
+	virtual void Draw(RenderContext2D* ctx) override;
 	virtual int GetLayer() const;
 	virtual GLuint GetTexture() const;
 	virtual uint32_t GetFlags() const;
@@ -95,7 +90,7 @@ struct Particle
 	float lifeTime = 1.0f;
 	float lifeRemaining = 0.0f;
 	bool active = false;
-	void AddToVertices(const AtlasTexture& atlas, std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) const;
+	void Draw(const AtlasTexture& atlas, RenderContext2D* ctx) const;
 };
 
 struct ParticlesBase : public Renderable
@@ -103,15 +98,13 @@ struct ParticlesBase : public Renderable
 	ParticlesBase(struct AtlasTexture* atlas, uint32_t numInPool, int layer = INT_MAX);
 	~ParticlesBase() = default;
 
-	virtual void AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) override;
+	virtual void Draw(RenderContext2D* ctx) override;
 
 	void Update(float dt);
 
 
 	void AddParticle(const glm::vec2& pos, const glm::vec2& vel, const glm::vec2& sizeBegin, const glm::vec2& sizeEnd, const glm::vec4& colBegin, const glm::vec4& colEnd, uint32_t textureIdx, float rotationBegin, float rotationEnd, float lifeTime);
 
-
-	void AddParticleToVertices(Particle& p, std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds);
 
 	virtual int GetLayer() const;
 	virtual GLuint GetTexture() const;

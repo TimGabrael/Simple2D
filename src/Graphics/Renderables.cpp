@@ -23,36 +23,9 @@ TextureQuad::TextureQuad(const glm::vec2& pos, const glm::vec2& halfSz, const gl
 	this->flags = 0;
 }
 
-void TextureQuad::AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
+void TextureQuad::Draw(RenderContext2D* ctx)
 {
-	uint32_t cur = verts.size();
-
-	const float s = sinf(angle);
-	const float c = cosf(angle);
-	
-	const float x1 = -halfSize.x * c + halfSize.y * s;
-	const float x2 = halfSize.x * c + halfSize.y * s;
-	const float x3 = halfSize.x * c - halfSize.y * s;
-	const float x4 = -halfSize.x * c - halfSize.y * s;
-					 
-	const float y1 = -halfSize.x * s - halfSize.y * c;
-	const float y2 = halfSize.x * s - halfSize.y * c;
-	const float y3 = halfSize.x * s + halfSize.y * c;
-	const float y4 = -halfSize.x * s + halfSize.y * c;
-
-
-	verts.push_back({ {pos.x + x1, (pos.y + y1) }, {uvStart.x, uvEnd.y}, col });
-	verts.push_back({ {pos.x + x2, (pos.y + y2) }, {uvEnd.x, uvEnd.y}, col });
-	verts.push_back({ {pos.x + x3, (pos.y + y3) }, {uvEnd.x, uvStart.y}, col });
-	verts.push_back({ {pos.x + x4, (pos.y + y4) }, {uvStart.x, uvStart.y}, col });
-
-
-	inds.push_back(cur);
-	inds.push_back(cur+1);
-	inds.push_back(cur+2);
-	inds.push_back(cur+2);
-	inds.push_back(cur+3);
-	inds.push_back(cur);
+	ctx->DrawQuad(pos - halfSize, pos + halfSize, uvStart, uvEnd, col, texture, angle);
 }
 
 void TextureQuad::UpdateFromBody(b2Body* body)
@@ -88,42 +61,15 @@ AnimatedQuad::AnimatedQuad(const glm::vec2& pos, const glm::vec2& halfSz, AtlasT
 	animStepIdx = 0;
 	this->flags = 0;
 }
-void AnimatedQuad::AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
+void AnimatedQuad::Draw(RenderContext2D* ctx)
 {
 	if (animIdx < range.size())
 	{
 		uint32_t idx = range.at(animIdx).startIdx + animStepIdx;
 		if (idx < range.at(animIdx).endIdx && idx < atlas->numBounds)
 		{
-			uint32_t cur = verts.size();
-
-			const float s = sinf(angle);
-			const float c = cosf(angle);
-
-			const float x1 = -halfSize.x * c + halfSize.y * s;
-			const float x2 = halfSize.x * c + halfSize.y * s;
-			const float x3 = halfSize.x * c - halfSize.y * s;
-			const float x4 = -halfSize.x * c - halfSize.y * s;
-
-			const float y1 = -halfSize.x * s - halfSize.y * c;
-			const float y2 = halfSize.x * s - halfSize.y * c;
-			const float y3 = halfSize.x * s + halfSize.y * c;
-			const float y4 = -halfSize.x * s + halfSize.y * c;
-
 			AtlasTexture::UVBound& bound = atlas->bounds[idx];
-
-			verts.push_back({ {pos.x + x1, (pos.y + y1) }, {bound.start.x, bound.end.y}, col });
-			verts.push_back({ {pos.x + x2, (pos.y + y2) }, {bound.end.x, bound.end.y}, col });
-			verts.push_back({ {pos.x + x3, (pos.y + y3) }, {bound.end.x, bound.start.y}, col });
-			verts.push_back({ {pos.x + x4, (pos.y + y4) }, {bound.start.x, bound.start.y}, col });
-
-
-			inds.push_back(cur);
-			inds.push_back(cur + 1);
-			inds.push_back(cur + 2);
-			inds.push_back(cur + 2);
-			inds.push_back(cur + 3);
-			inds.push_back(cur);
+			ctx->DrawQuad(pos - halfSize, pos + halfSize, bound.start, bound.end, col, texture, angle);
 		}
 	}
 }
@@ -152,10 +98,8 @@ uint32_t AnimatedQuad::GetFlags() const
 
 
 
-void Particle::AddToVertices(const AtlasTexture& atlas, std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds) const
+void Particle::Draw(const AtlasTexture& atlas, RenderContext2D* ctx) const
 {
-	uint32_t cur = verts.size();
-
 	const float rem = lifeRemaining / lifeTime;
 	const float angle = rotationEnd * (1.0f - rem) + rotationBegin * rem;
 
@@ -167,38 +111,9 @@ void Particle::AddToVertices(const AtlasTexture& atlas, std::vector<Vertex2D>& v
 							(colEnd.z * (1.0f - rem) + colBegin.z * rem),
 							(colEnd.w * (1.0f - rem) + colBegin.w * rem)
 	};
-		
-
-	const float s = sinf(angle);
-	const float c = cosf(angle);
-	
-	
-	const float x1 = -halfSize.x* c + halfSize.y * s;
-	const float x2 = halfSize.x * c + halfSize.y * s;
-	const float x3 = halfSize.x * c - halfSize.y * s;
-	const float x4 = -halfSize.x * c - halfSize.y * s;
-
-	const float y1 = -halfSize.x * s - halfSize.y * c;
-	const float y2 = halfSize.x * s - halfSize.y * c;
-	const float y3 = halfSize.x * s + halfSize.y * c;
-	const float y4 = -halfSize.x * s + halfSize.y * c;
-
-
-
 	AtlasTexture::UVBound& bound = atlas.bounds[textureIdx];
-
-	verts.push_back({ {pos.x + x1, (pos.y + y1) }, {bound.start.x, bound.end.y}, col });
-	verts.push_back({ {pos.x + x2, (pos.y + y2) }, {bound.end.x, bound.end.y}, col });
-	verts.push_back({ {pos.x + x3, (pos.y + y3) }, {bound.end.x, bound.start.y}, col });
-	verts.push_back({ {pos.x + x4, (pos.y + y4) }, {bound.start.x, bound.start.y}, col });
-
-
-	inds.push_back(cur);
-	inds.push_back(cur + 1);
-	inds.push_back(cur + 2);
-	inds.push_back(cur + 2);
-	inds.push_back(cur + 3);
-	inds.push_back(cur);
+	
+	ctx->DrawQuad(pos - halfSize, pos + halfSize, bound.start, bound.end, col, atlas.texture.uniform, angle);
 }
 
 ParticlesBase::ParticlesBase(AtlasTexture* atlas, uint32_t numInPool, int layer)
@@ -210,13 +125,13 @@ ParticlesBase::ParticlesBase(AtlasTexture* atlas, uint32_t numInPool, int layer)
 	this->tex = atlas;
 	this->flags = 0;
 }
-void ParticlesBase::AddVertices(std::vector<Vertex2D>& verts, std::vector<uint32_t>& inds)
+void ParticlesBase::Draw(RenderContext2D* ctx)
 {
 	for (auto& p : particles)
 	{
 		if (p.active)
 		{
-			p.AddToVertices(*tex, verts, inds);
+			p.Draw(*tex, ctx);
 		}
 	}
 }
