@@ -23,6 +23,7 @@ struct AudioPlaybackContext* AU_PlayAudio(struct AudioManager* manager, struct W
 struct AudioPlaybackContext* AU_PlayOggAudio(struct AudioManager* manager, struct OggFile* file, float volume = 1.0f);
 struct AudioPlaybackContext* AU_PlayAudioOnRepeat(struct AudioManager* manager, struct WavFile* file, float volume = 1.0f);
 struct AudioPlaybackContext* AU_PlayOggAudioOnRepeat(struct AudioManager* manager, struct OggFile* file, float volume = 1.0f);
+
 void AU_StopAudio(struct AudioManager* manager, struct AudioPlaybackContext* audioCtx);		// will free the audio context to be used by other samples
 void AU_PauseAudio(struct AudioManager* manager, struct AudioPlaybackContext* audioCtx);		// will keep the audio context alive
 void AU_ResumeAudio(struct AudioManager* manager, struct AudioPlaybackContext* audioCtx);
