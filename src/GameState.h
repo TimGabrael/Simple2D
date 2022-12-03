@@ -51,7 +51,7 @@ struct GameState
 	bool isMouseCaptured;
 };
 
-GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight, float gravity);
+GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight, float gravity, int concurrentAudio);
 void CleanUpGameState(GameState* state);
 
 GameState* GetGameState();

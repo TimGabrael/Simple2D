@@ -7,7 +7,7 @@
 
 int main()
 {
-	GameState* game = CreateGameState("Example2D", 1600, 900, -10.0f);
+	GameState* game = CreateGameState("Example2D", 1600, 900, -10.0f, 20);
 	GameManager* manager = GM_CreateGameManager(game);
 	game->manager = manager;
 

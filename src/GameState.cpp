@@ -116,7 +116,7 @@ static void JoystickCallback(int jid, int event)
 	}
 }
 
-GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight, float gravity)
+GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_t windowHeight, float gravity, int concurrentAudio)
 {
 	if (g_gameState) return g_gameState;
 
@@ -185,7 +185,7 @@ GameState* CreateGameState(const char* windowName, uint32_t windowWidth, uint32_
 	g_gameState->physics = PH_CreatePhysicsScene(gravity);
 	g_gameState->scene = SC_CreateScene();
 	g_gameState->renderer = RE_CreateRenderer();
-	g_gameState->audio = AU_CreateAudioManager(20);
+	g_gameState->audio = AU_CreateAudioManager(concurrentAudio);
 
 	g_gameState->aspectRatio = (float)windowWidth / (float)windowHeight;
 

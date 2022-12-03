@@ -14,7 +14,7 @@ void AU_FreeOggFile(struct AudioManager* manager, struct OggFile* file);
 struct AudioPlaybackContextList* AU_CreateAudioPlaybackContextList(int num);
 void AU_DestroyAudioPlaybackContextList(struct AudioPlaybackContextList* list);
 struct AudioPlaybackContext* AU_AllocContext(struct AudioPlaybackContextList* list, int num);
-void AU_FreeContext(struct AudioPlaybackContext* ctx);
+void AU_FreeContext(struct AudioManager* manager, struct AudioPlaybackContext* ctx);
 
 bool AU_PlayAudio(struct AudioManager* manager, struct AudioPlaybackContext* ctx, struct WavFile* file, float volume = 1.0f);
 bool AU_PlayOggAudio(struct AudioManager* manager, struct AudioPlaybackContext* ctx, struct OggFile* file, float volume = 1.0f);
@@ -35,6 +35,6 @@ bool AU_ResumeAudio(struct AudioManager* manager, struct AudioPlaybackContext* a
 
 bool AU_IsPlaying(struct AudioPlaybackContext* ctx);
 int AU_GetSampleCount(struct AudioPlaybackContext* ctx);
-void AU_SetSampleIndex(struct AudioPlaybackContext* ctx, int index);
+void AU_SetSampleIndex(struct AudioManager* manager, struct AudioPlaybackContext* ctx, int index);
 float AU_GetVolume(struct AudioPlaybackContext* ctx);
 void AU_SetVolume(struct AudioPlaybackContext* ctx, float volume);
