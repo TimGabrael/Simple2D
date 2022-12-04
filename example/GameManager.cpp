@@ -324,43 +324,50 @@ void GameManager::Update(float dt)
 
 void GameManager::PostUpdate(float dt)
 {
-	GameState* state = GetGameState();
-	b2Contact* list = state->physics->world.GetContactList();
-	while (list)
+	std::vector<b2Contact*> contactList;
 	{
-		if (list->IsTouching())
+		GameState* state = GetGameState();
+		b2Contact* list = state->physics->world.GetContactList();
+		while (list)
 		{
-			b2Fixture* fixA = list->GetFixtureA();
-			b2Fixture* fixB = list->GetFixtureB();
-			b2Body* bA = fixA->GetBody();
-			b2Body* bB = fixB->GetBody();
-			if (bA && bB)
+			if (list->IsTouching())
 			{
-				PeggleEntity* uA = (PeggleEntity*)bA->GetUserData().pointer;
-				PeggleEntity* uB = (PeggleEntity*)bB->GetUserData().pointer;
-				if (uA && uB)
+				contactList.push_back(list);
+			}
+			list = list->GetNext();
+		}
+	}
+	for (b2Contact* contact : contactList)
+	{
+		b2Fixture* fixA = contact->GetFixtureA();
+		b2Fixture* fixB = contact->GetFixtureB();
+		b2Body* bA = fixA->GetBody();
+		b2Body* bB = fixB->GetBody();
+		if (bA && bB)
+		{
+			PeggleEntity* uA = (PeggleEntity*)bA->GetUserData().pointer;
+			PeggleEntity* uB = (PeggleEntity*)bB->GetUserData().pointer;
+			if (uA && uB)
+			{
+				b2WorldManifold normal;
+				contact->GetWorldManifold(&normal);
+				glm::vec2 n = { normal.normal.x, normal.normal.y };
+				if (uA->GetType() == ENTITY_TYPE::BALL && uB->GetType() == ENTITY_TYPE::BALL)
 				{
-					b2WorldManifold normal;
-					list->GetWorldManifold(&normal);
-					glm::vec2 n = { normal.normal.x, normal.normal.y };
-					if (uA->GetType() == ENTITY_TYPE::BALL && uB->GetType() == ENTITY_TYPE::BALL)
-					{
-						uA->OnCollideWithBall((Ball*)uB, fixA, n);
-						uB->OnCollideWithBall((Ball*)uA, fixB, -n);
-					}
-					else if (uA->GetType() == ENTITY_TYPE::BALL && uB->GetType() != ENTITY_TYPE::BALL)
-					{
-						uB->OnCollideWithBall((Ball*)uA, fixB, -n);
-					}
-					else if (uA->GetType() != ENTITY_TYPE::BALL && uB->GetType() == ENTITY_TYPE::BALL)
-					{
-						uA->OnCollideWithBall((Ball*)uB, fixA, n);
-					}
-
+					uA->OnCollideWithBall((Ball*)uB, fixA, n);
+					uB->OnCollideWithBall((Ball*)uA, fixB, -n);
 				}
+				else if (uA->GetType() == ENTITY_TYPE::BALL && uB->GetType() != ENTITY_TYPE::BALL)
+				{
+					uB->OnCollideWithBall((Ball*)uA, fixB, -n);
+				}
+				else if (uA->GetType() != ENTITY_TYPE::BALL && uB->GetType() == ENTITY_TYPE::BALL)
+				{
+					uA->OnCollideWithBall((Ball*)uB, fixA, n);
+				}
+
 			}
 		}
-		list = list->GetNext();
 	}
 }
 

@@ -1,8 +1,8 @@
+#include <atomic>
 #include "AudioManager.h"
 #include "WavFile.h"
 #include "NFDriver/NFDriver.h"
 #include "stb_vorbis.h"
-#include <atomic>
 #include "util/Utility.h"
 #include <chrono>
 #include <mutex>

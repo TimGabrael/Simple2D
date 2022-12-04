@@ -400,7 +400,7 @@ struct Renderer
 struct Renderer* RE_CreateRenderer()
 {
 	Renderer* out = new Renderer;
-	memset(out, 0, sizeof(Renderer));
+	memset(out, 0, sizeof(Renderer) - sizeof(InternalRenderContext2D));
 
 
 	out->info.program = CreateProgram(stdVertexShader, stdFragmentShader);
