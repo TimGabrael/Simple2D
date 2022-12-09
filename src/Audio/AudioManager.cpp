@@ -483,6 +483,10 @@ int AU_GetSampleCount(struct AudioPlaybackContext* ctx)
 	}
 	return -1;
 }
+int AU_GetSampleIndex(struct AudioPlaybackContext* ctx)
+{
+	return ctx->index;
+}
 void AU_SetSampleIndex(struct AudioManager* manager, struct AudioPlaybackContext* ctx, int index)
 {
 	int maxCount = AU_GetSampleCount(ctx);

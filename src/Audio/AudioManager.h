@@ -35,6 +35,7 @@ bool AU_ResumeAudio(struct AudioManager* manager, struct AudioPlaybackContext* a
 
 bool AU_IsPlaying(struct AudioPlaybackContext* ctx);
 int AU_GetSampleCount(struct AudioPlaybackContext* ctx);
+int AU_GetSampleIndex(struct AudioPlaybackContext* ctx);
 void AU_SetSampleIndex(struct AudioManager* manager, struct AudioPlaybackContext* ctx, int index);
 float AU_GetVolume(struct AudioPlaybackContext* ctx);
 void AU_SetVolume(struct AudioPlaybackContext* ctx, float volume);
