@@ -34,6 +34,9 @@ void AU_PauseAudio(struct AudioManager* manager, struct AudioPlaybackContext* au
 bool AU_ResumeAudio(struct AudioManager* manager, struct AudioPlaybackContext* audioCtx);
 
 bool AU_IsPlaying(struct AudioPlaybackContext* ctx);
+bool AU_IsOgg(struct AudioPlaybackContext* ctx);
+struct WavFile* AU_GetWavFile(struct AudioPlaybackContext* ctx);
+struct stb_vorbis* AU_GetOggFile(struct AudioPlaybackContext* ctx);
 int AU_GetSampleCount(struct AudioPlaybackContext* ctx);
 int AU_GetSampleIndex(struct AudioPlaybackContext* ctx);
 void AU_SetSampleIndex(struct AudioManager* manager, struct AudioPlaybackContext* ctx, int index);

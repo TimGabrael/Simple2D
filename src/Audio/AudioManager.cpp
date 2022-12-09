@@ -467,6 +467,21 @@ bool AU_IsPlaying(struct AudioPlaybackContext* ctx)
 	if (!ctx) return false;
 	return ctx->isPlaying;
 }
+bool AU_IsOgg(struct AudioPlaybackContext* ctx)
+{
+	if (!ctx) return false;
+	return ctx->isOgg;
+}
+struct WavFile* AU_GetWavFile(struct AudioPlaybackContext* ctx)
+{
+	if (!ctx) return nullptr;
+	return ctx->file.wav;
+}
+struct stb_vorbis* AU_GetOggFile(struct AudioPlaybackContext* ctx)
+{
+	if (!ctx) return nullptr;
+	return ctx->file.ogg;
+}
 int AU_GetSampleCount(struct AudioPlaybackContext* ctx)
 {
 	if (!ctx) return -1;
