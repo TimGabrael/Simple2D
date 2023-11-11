@@ -31,9 +31,9 @@ struct AtlasBuildData
 	std::vector<rect_type> rects;
 	void CopyRectToRect(const rect_type& cpyRec, uint32_t dstStartX, uint32_t dstStartY)
 	{
-		for (uint32_t y = 0; y < cpyRec.h; y++)
+		for (int y = 0; y < cpyRec.h; y++)
 		{
-			for (uint32_t x = 0; x < cpyRec.w; x++)
+			for (int x = 0; x < cpyRec.w; x++)
 			{
 				data[x + dstStartX + (y + dstStartY) * curWidth] = copyData[x + cpyRec.x + (y + cpyRec.y) * copyWidth];
 			}
@@ -93,7 +93,7 @@ FontMetrics* AM_AtlasAddGlyphRangeFromFile(struct AtlasBuildData* data, const ch
 	FontMetrics* metrics = new FontMetrics;
 	memset(metrics, 0, sizeof(FontMetrics));
 	metrics->size = fontSize;
-	metrics->atlasIdx = data->rects.size();
+	metrics->atlasIdx = (uint32_t)data->rects.size();
 
 	int ascent, descent, lineGap;
 	stbtt_GetFontVMetrics(&info, &ascent, &descent, &lineGap);
@@ -121,17 +121,17 @@ FontMetrics* AM_AtlasAddGlyphRangeFromFile(struct AtlasBuildData* data, const ch
 
 		g.width = (float)(x2 - x1);
 		g.height = (float)(y2 - y1);
-		g.leftSideBearing = x1;
+		g.leftSideBearing = (float)x1;
 		g.yStart = (float)y1;
 
-		stbtt_MakeCodepointBitmap(&info, tempBitmap, g.width, g.height, tempWidthHeight, scale, scale, i);
+		stbtt_MakeCodepointBitmap(&info, tempBitmap, (int)g.width, (int)g.height, tempWidthHeight, scale, scale, i);
 
 		for (uint32_t j = 0; j < tempWidthHeight * tempWidthHeight; j++)
 		{
 			tempColor[j] = 0xFFFFFF | (tempBitmap[j] << 24);
 		}
 
-		if (!AM_AtlasAddSubRawData(data, tempColor, 0, 0, g.width, g.height, tempWidthHeight))
+		if (!AM_AtlasAddSubRawData(data, tempColor, 0, 0, (uint32_t)g.width, (uint32_t)g.height, tempWidthHeight))
 		{
 			delete[] fontData;
 			delete[] metrics->glyphs;
@@ -184,7 +184,7 @@ bool AM_AtlasAddSubRawData(struct AtlasBuildData* data, uint32_t* rawData, uint3
 			memset(data->copyData, 0, sizeof(uint32_t) * dataSize);
 		}
 		memcpy(data->copyData, data->data, sizeof(uint32_t) * data->curWidth * data->curHeight);
-		if (data->curWidth <= result_size.w || data->curHeight <= result_size.h)
+		if (data->curWidth <= (uint32_t)result_size.w || data->curHeight <= (uint32_t)result_size.h)
 		{
 			sizeChanged = true;
 			delete[] data->data;
@@ -245,7 +245,7 @@ struct TextureAltasSerializedFontMetrics
 void AM_StoreTextureAtlas(const char* file, struct AtlasBuildData* data, FontMetrics** metrics, uint32_t numFontMetrics)
 {
 
-	uint32_t fullDataSize = sizeof(TextureAtlasSerializedHeader) + data->curWidth * data->curHeight * sizeof(uint32_t) + sizeof(rect_type) * data->rects.size();
+	uint32_t fullDataSize = (uint32_t)(sizeof(TextureAtlasSerializedHeader) + data->curWidth * data->curHeight * sizeof(uint32_t) + sizeof(rect_type) * data->rects.size());
 	for (uint32_t i = 0; i < numFontMetrics; i++)
 	{
 		fullDataSize += (sizeof(FontMetrics) - 8) + sizeof(Glyph) * metrics[i]->numGlyphs;
@@ -257,7 +257,7 @@ void AM_StoreTextureAtlas(const char* file, struct AtlasBuildData* data, FontMet
 	header->width = data->curWidth;
 	header->height = data->curHeight;
 	header->numMetrics = numFontMetrics;
-	header->numRects = data->rects.size();
+	header->numRects = (uint32_t)data->rects.size();
 
 	memcpy(curFill, data->data, sizeof(uint32_t) * data->curWidth * data->curHeight);
 	curFill += sizeof(uint32_t) * data->curWidth * data->curHeight;
@@ -344,7 +344,7 @@ AtlasTexture* AM_EndTextureAtlas(struct AtlasBuildData* data, bool linear)
 
 
 
-	atlas->numBounds = data->rects.size();
+	atlas->numBounds = (uint32_t)data->rects.size();
 	atlas->bounds = new AtlasTexture::UVBound[atlas->numBounds];
 	memset(atlas->bounds, 0, sizeof(AtlasTexture::UVBound) * atlas->numBounds);
 	for (uint32_t i = 0; i < atlas->numBounds; i++)

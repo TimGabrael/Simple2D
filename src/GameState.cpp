@@ -80,10 +80,10 @@ static void MousePositionCallback(GLFWwindow* window, double x, double y)
 		double dy = g_gameState->mouseY - y;
 
 		if (!ImGui::GetIO().WantCaptureMouse)
-			g_gameState->manager->OnMousePositionChanged(x, y, dx, dy);
+			g_gameState->manager->OnMousePositionChanged((float)x, (float)y, (float)dx, (float)dy);
 
-		g_gameState->mouseX = x;
-		g_gameState->mouseY = y;
+		g_gameState->mouseX = (float)x;
+		g_gameState->mouseY = (float)y;
 	}
 }
 static void WindowFocusCallback(GLFWwindow* window, int focused)
@@ -302,7 +302,7 @@ void UpateGameState()
 		static double timer = glfwGetTime();
 		double curTime = glfwGetTime();
 
-		float dt = (curTime - timer) * g_gameState->tickMultiplier;
+		float dt = (float)(curTime - timer) * g_gameState->tickMultiplier;
 		timer = curTime;
 		g_gameState->accumulatedTime += dt;
 

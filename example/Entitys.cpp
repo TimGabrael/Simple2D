@@ -369,7 +369,7 @@ void Projectile::UpdateFrame(float dt)
 // RETURN TRUE IF THE PROJECTILE SHOULD CONTINUE TO TRAVEL
 bool Projectile::OnHitEnemy(struct Character* hit, uint32_t idx)
 {
-	hit->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_SLIME_DIE, GM_GetGameManager()->stats.accumulatedDamage);
+	hit->ApplyDamage(SOUNDS::SOUND_NONE, SOUNDS::SOUND_SLIME_DIE, (int)GM_GetGameManager()->stats.accumulatedDamage);
 	return false;
 }
 

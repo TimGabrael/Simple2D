@@ -153,7 +153,7 @@ struct InternalRenderContext2D
 	{
 		RenderCommand* command = nullptr;
 		{
-			uint32_t cmdCount = cmds.size();
+			uint32_t cmdCount = (uint32_t)cmds.size();
 			for(uint32_t i = 0; i < cmdCount; i++)
 			{
 				if (cmds.at(i).texture == texture)
@@ -176,7 +176,7 @@ struct InternalRenderContext2D
 			}
 		}
 
-		uint32_t oldSz = vertices.size();
+		uint32_t oldSz = (uint32_t)vertices.size();
 		vertices.resize(oldSz + numVerts);
 		memcpy(vertices.data() + oldSz, vtx, numVerts * sizeof(Vertex2D));
 
@@ -498,7 +498,7 @@ void RE_CreatePostProcessingRenderData(PostProcessingRenderData* data, uint32_t 
 	data->bloomIntensity = 1.0f;	// set standard value for bloom
 
 
-	data->numPPFbos = 1 + floor(log2(glm::max(data->width, data->height)));
+	data->numPPFbos = (int)(1 + floor(log2(glm::max(data->width, data->height))));
 	int curX = width; int curY = height;
 	for (int i = 1; i < data->numPPFbos; i++)
 	{
@@ -701,7 +701,7 @@ void RE_RenderPostProcessingBloom(struct Renderer* renderer, const PostProcessin
 			glUniform1f(renderer->ppInfo.bloom.blurRadiusLoc, ppData->blurRadius);
 			glUniform1i(renderer->ppInfo.bloom.blurAxisLoc, (int)PostProcessingRenderInfo::BLUR_AXIS::X_AXIS);
 			glUniform1f(renderer->ppInfo.bloom.intensityLoc, 0.0f);
-			glUniform1f(renderer->ppInfo.bloom.mipLevelLoc, i - 1);
+			glUniform1f(renderer->ppInfo.bloom.mipLevelLoc, (GLfloat)(i - 1));
 
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -711,7 +711,7 @@ void RE_RenderPostProcessingBloom(struct Renderer* renderer, const PostProcessin
 
 			glUniform1f(renderer->ppInfo.bloom.blurRadiusLoc, ppData->blurRadius / 2.0f);
 			glUniform1f(renderer->ppInfo.bloom.intensityLoc, 0.0f);
-			glUniform1f(renderer->ppInfo.bloom.mipLevelLoc, i);
+			glUniform1f(renderer->ppInfo.bloom.mipLevelLoc, (GLfloat)i);
 			glUniform1i(renderer->ppInfo.bloom.blurAxisLoc, (int)PostProcessingRenderInfo::BLUR_AXIS::Y_AXIS);
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 		}
@@ -726,7 +726,7 @@ void RE_RenderPostProcessingBloom(struct Renderer* renderer, const PostProcessin
 		{
 			glBindFramebuffer(GL_FRAMEBUFFER, ppData->ppFBOs1[i]);
 			glViewport(0, 0, fboSizes[i].x, fboSizes[i].y);
-			glUniform1f(renderer->ppInfo.upsampling.mipLevelLoc, i + 1);
+			glUniform1f(renderer->ppInfo.upsampling.mipLevelLoc, (GLfloat)(i + 1));
 			glDrawArrays(GL_TRIANGLES, 0, 3);
 		}
 	}

@@ -30,7 +30,7 @@ void GameManager::DrawUi(GameState* state)
 					imList[i].x = (list.at(i).x - vpStart.x) * vpToScreen.x;
 					imList[i].y = (list.at(i).y - vpEnd.y) * vpToScreen.y;
 				}
-				drawList->AddPolyline(imList, list.size(), 0x80FFFFFF, 0, 2.0f);
+				drawList->AddPolyline(imList, (int)list.size(), 0x80FFFFFF, 0, 2.0f);
 				delete[] imList;
 			}
 
@@ -498,7 +498,7 @@ void GM_AddTextParticle(const char* text, glm::vec2& center, const glm::vec2& ve
 		ParticlesBase& b = GM_GetGameManager()->particleHandler->base;
 
 		float pixelSize = 0.0f;
-		const int len = strnlen(text, 1000);
+		const int len = (int)strnlen(text, 1000);
 		const float spaceAdvance = roundf(m->metrics->size * 2.0f / 4.0f * sizeBegin);
 
 		// CALCULATE PIXEL SIZE OF THE TEXT
@@ -658,7 +658,7 @@ void GM_CreateFieldFromCharacters(Base* b, const char* field)
 
 		if (first == lineEnd) break;
 
-		const uint32_t steps = lineEnd - first;
+		const uint32_t steps = (uint32_t)(lineEnd - first);
 
 		float stepX = playSize.x / (float)steps;
 
